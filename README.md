@@ -4,6 +4,19 @@ This repository contains a simple menu-based interface for a Raspberry Pi with a
 
 The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick.
 
+## Setup on Raspberry Pi OS Lite (32-bit)
+
+Install the required packages and enable the SPI interface:
+
+```bash
+sudo apt-get update
+sudo apt-get install python3-pip python3-rpi.gpio fonts-dejavu-core
+sudo pip3 install -r requirements.txt
+sudo raspi-config nonint do_spi 0
+```
+
+Reboot after enabling SPI so the display can be accessed by the script.
+
 ## Pin Assignments
 
 Mini OS uses BCM GPIO numbers. Connect the Waveshare 1.44" ST7735 display and buttons as follows:

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import RPi.GPIO as GPIO
 import time
 import subprocess
@@ -36,8 +38,9 @@ device = st7735(serial_interface, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, bg
                 h_offset=2, v_offset=1) # Adjust offsets if your display has borders/misalignment
 
 # --- Joystick and Button Configuration ---
-# GPIO setup using BCM numbering. Buttons are active LOW (pressed = low). 
+# GPIO setup using BCM numbering. Buttons are active LOW (pressed = low).
 GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
 
 BUTTON_PINS = {
     "KEY1": 21, "KEY2": 20, "KEY3": 16, # General purpose buttons 
