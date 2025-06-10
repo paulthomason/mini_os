@@ -2,7 +2,7 @@
 
 This repository contains a simple menu-based interface for a Raspberry Pi with an ST7735-based LCD display.
 
-The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick. It also provides a menu option to briefly display the current date and time.
+The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick. It also provides menu options to briefly display the current date and time and a simple system monitor showing CPU temperature, load and memory usage.
 
 ## Setup on Raspberry Pi OS Lite (32-bit)
 
