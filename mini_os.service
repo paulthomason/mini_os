@@ -1,0 +1,15 @@
+[Unit]
+Description=Mini OS Menu Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/mini_os/main.py
+WorkingDirectory=/opt/mini_os
+Restart=always
+User=pi
+Group=pi
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
