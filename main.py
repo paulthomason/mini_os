@@ -248,6 +248,51 @@ def run_program2():
     menu_instance.display_message_screen("Program 2", "Done!", delay=1.5)
     menu_instance.clear_display()
 
+def run_system_monitor(duration=10):
+    """Display CPU temperature, load and memory usage for a few seconds."""
+    end_time = time.time() + duration
+    while time.time() < end_time:
+        # CPU temperature using vcgencmd if available
+        try:
+            output = subprocess.check_output(["vcgencmd", "measure_temp"]).decode()
+            temp = output.strip().replace("temp=", "").replace("'C", "")
+        except Exception:
+            temp = "N/A"
+
+        # CPU load (1 minute average)
+        try:
+            load = os.getloadavg()[0]
+        except Exception:
+            load = 0.0
+
+        # Memory usage from /proc/meminfo
+        mem_total = 0
+        mem_available = 0
+        try:
+            with open("/proc/meminfo") as f:
+                for line in f:
+                    if line.startswith("MemTotal"):
+                        mem_total = int(line.split()[1])
+                    elif line.startswith("MemAvailable"):
+                        mem_available = int(line.split()[1])
+        except Exception:
+            pass
+        mem_used = mem_total - mem_available
+        if mem_total:
+            mem_str = f"{mem_used//1024}/{mem_total//1024}MB"
+        else:
+            mem_str = "N/A"
+
+        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), "System Monitor", font=font_large, fill=(255, 255, 0))
+        draw.text((5, 25), f"Temp: {temp}C", font=font_medium, fill=(255, 255, 255))
+        draw.text((5, 40), f"Load: {load:.2f}", font=font_medium, fill=(255, 255, 255))
+        draw.text((5, 55), f"Mem: {mem_str}", font=font_medium, fill=(255, 255, 255))
+        device.display(img)
+        time.sleep(1)
+    menu_instance.clear_display()
+
 def show_info():
     menu_instance.display_message_screen("System Info", "Raspberry Pi Mini-OS\nVersion 1.0\nST7735S Display", delay=4)
     menu_instance.clear_display()
@@ -289,7 +334,15 @@ def show_settings_menu():
 
 
 def show_main_menu():
-    menu_instance.items = ["Run Program 1", "Run Program 2", "Date & Time", "Show Info", "Settings", "Shutdown"]
+    menu_instance.items = [
+        "Run Program 1",
+        "Run Program 2",
+        "System Monitor",
+        "Date & Time",
+        "Show Info",
+        "Settings",
+        "Shutdown",
+    ]
     menu_instance.selected_item = 0
     menu_instance.current_screen = "main_menu"
     menu_instance.draw()
@@ -308,6 +361,8 @@ def handle_menu_selection(selection):
         run_program1()
     elif selection == "Run Program 2":
         run_program2()
+    elif selection == "System Monitor":
+        run_system_monitor()
     elif selection == "Date & Time":
         show_date_time()
     elif selection == "Show Info":
