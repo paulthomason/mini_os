@@ -2,6 +2,8 @@
 
 This repository contains a simple menu-based interface for a Raspberry Pi with an ST7735-based LCD display.
 
+The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick.
+
 ## Pin Assignments
 
 Mini OS uses BCM GPIO numbers. Connect the Waveshare 1.44" ST7735 display and buttons as follows:

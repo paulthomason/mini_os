@@ -64,6 +64,11 @@ except IOError:
     font_medium = ImageFont.load_default()
     font_large = ImageFont.load_default()
 
+# --- Backlight Control ---
+brightness_level = 100  # Percentage 0-100
+backlight_pwm = None
+
+
 # --- Menu System ---
 class Menu:
     def __init__(self, items, font=font_medium):
@@ -146,15 +151,34 @@ def button_event_handler(channel):
                 menu_instance.navigate("down")
             elif pin_name == "JOY_PRESS":
                 handle_menu_selection(menu_instance.get_selected_item())
-            elif pin_name == "KEY1": # Example: KEY1 acts as a "back" or "cancel" button
-                # For main menu, maybe go to a "shutdown/reboot" confirmation
-                if menu_instance.get_selected_item() != "Shutdown": # Avoid double-triggering shutdown
-                    menu_instance.selected_item = len(menu_instance.items) - 1 # Select shutdown option
+            elif pin_name == "KEY1":
+                if menu_instance.get_selected_item() != "Shutdown":
+                    menu_instance.selected_item = len(menu_instance.items) - 1
                     menu_instance.draw()
-            elif pin_name == "KEY2": # Example: Key2 for quick info
+            elif pin_name == "KEY2":
                 show_info()
-                menu_instance.draw() # Return to menu after info
-        # You can add more conditions here for other screens/sub-menus
+                menu_instance.draw()
+        elif menu_instance.current_screen == "settings":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_settings_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_main_menu()
+        elif menu_instance.current_screen == "brightness":
+            global brightness_level
+            if pin_name == "JOY_LEFT" and brightness_level > 0:
+                brightness_level = max(0, brightness_level - 10)
+                update_backlight()
+                draw_brightness_screen()
+            elif pin_name == "JOY_RIGHT" and brightness_level < 100:
+                brightness_level = min(100, brightness_level + 10)
+                update_backlight()
+                draw_brightness_screen()
+            elif pin_name == "JOY_PRESS" or pin_name == "KEY1":
+                show_settings_menu()
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -225,6 +249,43 @@ def show_info():
     menu_instance.display_message_screen("System Info", "Raspberry Pi Mini-OS\nVersion 1.0\nST7735S Display", delay=4)
     menu_instance.clear_display()
 
+def update_backlight():
+    if backlight_pwm:
+        backlight_pwm.ChangeDutyCycle(brightness_level)
+
+
+def draw_brightness_screen():
+    img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+    draw = ImageDraw.Draw(img)
+    draw.text((5, 5), "Brightness", font=font_large, fill=(255, 255, 0))
+    bar_width = int((DISPLAY_WIDTH - 10) * brightness_level / 100)
+    draw.rectangle([(5, 30), (5 + bar_width, 50)], fill=(0, 255, 0))
+    draw.rectangle([(5, 30), (DISPLAY_WIDTH - 5, 50)], outline=(255, 255, 255))
+    draw.text((5, 55), f"{brightness_level}%", font=font_medium, fill=(255, 255, 255))
+    device.display(img)
+
+
+def show_settings_menu():
+    menu_instance.items = ["Brightness", "Back"]
+    menu_instance.selected_item = 0
+    menu_instance.current_screen = "settings"
+    menu_instance.draw()
+
+
+def show_main_menu():
+    menu_instance.items = ["Run Program 1", "Run Program 2", "Show Info", "Settings", "Shutdown"]
+    menu_instance.selected_item = 0
+    menu_instance.current_screen = "main_menu"
+    menu_instance.draw()
+
+
+def handle_settings_selection(selection):
+    if selection == "Brightness":
+        menu_instance.current_screen = "brightness"
+        draw_brightness_screen()
+    elif selection == "Back":
+        show_main_menu()
+
 def handle_menu_selection(selection):
     print(f"Selected: {selection}") # This output goes to journalctl
     if selection == "Run Program 1":
@@ -233,6 +294,8 @@ def handle_menu_selection(selection):
         run_program2()
     elif selection == "Show Info":
         show_info()
+    elif selection == "Settings":
+        show_settings_menu()
     elif selection == "Shutdown":
         menu_instance.display_message_screen("System", "Shutting down...", delay=2)
         print("Shutting down now via systemctl poweroff.")
@@ -249,8 +312,8 @@ def handle_menu_selection(selection):
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    menu_items = ["Run Program 1", "Run Program 2", "Show Info", "Shutdown"]
-    menu_instance = Menu(menu_items)
+    menu_instance = Menu([])
+    show_main_menu()
 
     # Attach event detection to all desired pins after the menu is ready
     for pin_name, pin_num in BUTTON_PINS.items():
@@ -259,9 +322,10 @@ if __name__ == "__main__":
         # bouncetime in ms helps filter out noise.
 
     try:
-        # Initialize backlight control
+        # Initialize backlight PWM for brightness control
         GPIO.setup(BL_PIN, GPIO.OUT)
-        GPIO.output(BL_PIN, GPIO.HIGH) # Turn on backlight 
+        backlight_pwm = GPIO.PWM(BL_PIN, 1000)
+        backlight_pwm.start(brightness_level)
 
         menu_instance.draw() # Initial draw of the menu
 
@@ -284,7 +348,9 @@ if __name__ == "__main__":
         print("Cleaning up display and GPIO resources...")
         try:
             menu_instance.clear_display()
-            GPIO.output(BL_PIN, GPIO.LOW) # Turn off backlight
+            if backlight_pwm:
+                backlight_pwm.stop()
+            GPIO.output(BL_PIN, GPIO.LOW)
             device.cleanup() # Releases luma.lcd resources
         except Exception as cleanup_e:
             print(f"Error during cleanup: {cleanup_e}")
