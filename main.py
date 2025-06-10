@@ -4,6 +4,8 @@ import RPi.GPIO as GPIO
 import time
 import subprocess
 from datetime import datetime
+import os
+import random
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -54,6 +56,24 @@ for pin_name, pin_num in BUTTON_PINS.items():
 # Global dictionary to track button states (updated by callback)
 button_states = {name: False for name in BUTTON_PINS.keys()}
 last_event_time = {name: 0.0 for name in BUTTON_PINS.keys()} # For basic debounce
+
+# Friendly names for buttons/joystick used in the reaction game
+BUTTON_NAMES = {
+    "JOY_UP": "Joystick Up",
+    "JOY_DOWN": "Joystick Down",
+    "JOY_LEFT": "Joystick Left",
+    "JOY_RIGHT": "Joystick Right",
+    "JOY_PRESS": "Joystick Press",
+    "KEY1": "Button 1",
+    "KEY2": "Button 2",
+    "KEY3": "Button 3",
+}
+
+# Reaction game state
+game_round = 0
+game_score = 0
+game_prompt = None
+TOTAL_GAME_ROUNDS = 10
 
 # --- Fonts ---
 # Try to load a monospace font for better alignment, fallback to default.
@@ -182,6 +202,9 @@ def button_event_handler(channel):
                 draw_brightness_screen()
             elif pin_name == "JOY_PRESS" or pin_name == "KEY1":
                 show_settings_menu()
+        elif menu_instance.current_screen == "button_game":
+            if pin_name in BUTTON_NAMES:
+                handle_game_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -310,6 +333,48 @@ def show_date_time(duration=10):
         time.sleep(1)
     menu_instance.clear_display()
 
+# --- Reaction Game ---
+
+def draw_game_screen(prompt):
+    img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+    draw = ImageDraw.Draw(img)
+    draw.text((5, 5), f"Round {game_round+1}/{TOTAL_GAME_ROUNDS}", font=font_medium, fill=(255, 255, 255))
+    draw.text((5, 20), f"Score: {game_score}", font=font_medium, fill=(255, 255, 255))
+    draw.text((5, 45), prompt, font=font_large, fill=(0, 255, 0))
+    device.display(img)
+
+
+def start_button_game(rounds=10):
+    global game_round, game_score, TOTAL_GAME_ROUNDS
+    game_round = 0
+    game_score = 0
+    TOTAL_GAME_ROUNDS = rounds
+    menu_instance.current_screen = "button_game"
+    next_game_round()
+
+
+def next_game_round():
+    global game_prompt
+    actions = list(BUTTON_NAMES.keys())
+    game_prompt = random.choice(actions)
+    prompt_text = f"Press {BUTTON_NAMES[game_prompt]}"
+    draw_game_screen(prompt_text)
+
+
+def handle_game_input(pin_name):
+    global game_round, game_score
+    if pin_name == game_prompt:
+        game_score += 1
+        game_round += 1
+        if game_round >= TOTAL_GAME_ROUNDS:
+            menu_instance.display_message_screen("Game Over", f"Score: {game_score}/{TOTAL_GAME_ROUNDS}", delay=3)
+            show_main_menu()
+        else:
+            next_game_round()
+    else:
+        menu_instance.display_message_screen("Wrong Button!", f"Score: {game_score}", delay=2)
+        show_main_menu()
+
 def update_backlight():
     if backlight_pwm:
         backlight_pwm.ChangeDutyCycle(brightness_level)
@@ -337,6 +402,7 @@ def show_main_menu():
     menu_instance.items = [
         "Run Program 1",
         "Run Program 2",
+        "Button Game",
         "System Monitor",
         "Date & Time",
         "Show Info",
@@ -361,6 +427,9 @@ def handle_menu_selection(selection):
         run_program1()
     elif selection == "Run Program 2":
         run_program2()
+    elif selection == "Button Game":
+        start_button_game()
+        return
     elif selection == "System Monitor":
         run_system_monitor()
     elif selection == "Date & Time":
