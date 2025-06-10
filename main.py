@@ -249,6 +249,19 @@ def show_info():
     menu_instance.display_message_screen("System Info", "Raspberry Pi Mini-OS\nVersion 1.0\nST7735S Display", delay=4)
     menu_instance.clear_display()
 
+def show_date_time(duration=10):
+    """Display the current date and time for a few seconds."""
+    end_time = time.time() + duration
+    while time.time() < end_time:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), "Date & Time", font=font_large, fill=(255, 255, 0))
+        draw.text((5, 30), now, font=font_medium, fill=(255, 255, 255))
+        device.display(img)
+        time.sleep(1)
+    menu_instance.clear_display()
+
 def update_backlight():
     if backlight_pwm:
         backlight_pwm.ChangeDutyCycle(brightness_level)
@@ -273,7 +286,7 @@ def show_settings_menu():
 
 
 def show_main_menu():
-    menu_instance.items = ["Run Program 1", "Run Program 2", "Show Info", "Settings", "Shutdown"]
+    menu_instance.items = ["Run Program 1", "Run Program 2", "Date & Time", "Show Info", "Settings", "Shutdown"]
     menu_instance.selected_item = 0
     menu_instance.current_screen = "main_menu"
     menu_instance.draw()
@@ -292,6 +305,8 @@ def handle_menu_selection(selection):
         run_program1()
     elif selection == "Run Program 2":
         run_program2()
+    elif selection == "Date & Time":
+        show_date_time()
     elif selection == "Show Info":
         show_info()
     elif selection == "Settings":
