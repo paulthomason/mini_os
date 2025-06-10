@@ -2,6 +2,28 @@
 
 This repository contains a simple menu-based interface for a Raspberry Pi with an ST7735-based LCD display.
 
+## Pin Assignments
+
+Mini OS uses BCM GPIO numbers. Connect the Waveshare 1.44" ST7735 display and buttons as follows:
+
+### ST7735 Display
+- **RST** - GPIO27
+- **DC** - GPIO25
+- **CS** - GPIO8
+- **MOSI** - GPIO10
+- **SCLK** - GPIO11
+- **Backlight** - GPIO24
+
+### Buttons and Joystick (active LOW)
+- **KEY1** - GPIO21
+- **KEY2** - GPIO20
+- **KEY3** - GPIO16
+- **Joystick Up** - GPIO6
+- **Joystick Down** - GPIO19
+- **Joystick Left** - GPIO5
+- **Joystick Right** - GPIO26
+- **Joystick Press** - GPIO13
+
 ## Running as a `systemd` Service
 
 1. Copy `mini_os.service` to `/etc/systemd/system/` (or `~/.config/systemd/user/` for a user service).
