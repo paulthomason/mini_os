@@ -125,6 +125,10 @@ def button_event_handler(channel):
     current_time = time.time()
     pin_name = next((name for name, num in BUTTON_PINS.items() if num == channel), f"Unknown Pin {channel}")
 
+    # If the menu hasn't been initialized yet, ignore events
+    if menu_instance is None:
+        return
+
     # Simple debounce to prevent multiple triggers from one physical press
     if current_time - last_event_time[pin_name] < 0.2: # 200ms debounce time
         return
@@ -158,11 +162,10 @@ def button_event_handler(channel):
     last_event_time[pin_name] = current_time
 
 
-# Attach event detection to all desired pins
-for pin_name, pin_num in BUTTON_PINS.items():
-    # Detect both rising and falling edges to track press/release for robustness
-    GPIO.add_event_detect(pin_num, GPIO.BOTH, callback=button_event_handler, bouncetime=100) 
-    # bouncetime in ms helps filter out noise.
+
+# Global menu instance will be created in the main block.  Defining it here
+# prevents NameError in callbacks triggered before initialization.
+menu_instance = None
 
 
 # --- Program Launchers (Placeholders for your applications) ---
@@ -248,6 +251,12 @@ def handle_menu_selection(selection):
 if __name__ == "__main__":
     menu_items = ["Run Program 1", "Run Program 2", "Show Info", "Shutdown"]
     menu_instance = Menu(menu_items)
+
+    # Attach event detection to all desired pins after the menu is ready
+    for pin_name, pin_num in BUTTON_PINS.items():
+        # Detect both rising and falling edges to track press/release for robustness
+        GPIO.add_event_detect(pin_num, GPIO.BOTH, callback=button_event_handler, bouncetime=100)
+        # bouncetime in ms helps filter out noise.
 
     try:
         # Initialize backlight control
