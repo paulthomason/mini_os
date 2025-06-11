@@ -76,3 +76,10 @@ iPhone or other device with the joystick. Press **KEY1** to attempt a direct
 connection or **KEY2** to pair and connect (useful for phones that require
 confirming a passkey such as the iPhone 15 Pro Max). Ensure the phone is in
 Bluetooth pairing mode when attempting to connect.
+
+The Utilities menu also includes **Shell**, which opens the on-screen keyboard
+so you can type a command and execute it on the Pi. Press **KEY1** to cycle the
+keyboard layout, **KEY2** to delete the last character and **KEY3** to run the
+command. The output scrolls on the display and pressing **KEY3** returns to the
+prompt.
+
