@@ -171,6 +171,8 @@ def shell():
                 ).decode()
             except subprocess.CalledProcessError as e:
                 output = e.output.decode() if e.output else str(e)
+            except subprocess.TimeoutExpired:
+                output = "Command timed out"
             except Exception as e:
                 output = str(e)
             SHELL_HISTORY.append((cmd, output))
