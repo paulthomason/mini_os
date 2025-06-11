@@ -12,7 +12,7 @@ import re
 import webbrowser
 import shutil
 import socket
-from games import snake, tetris, rps, space_invaders
+from games import snake, tetris, rps, space_invaders, axe
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -545,6 +545,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "space_invaders":
             if pin_name in BUTTON_PINS:
                 handle_space_invaders_input(pin_name)
+        elif menu_instance.current_screen == "axe":
+            if pin_name in BUTTON_PINS:
+                handle_axe_input(pin_name)
         elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
                 handle_notes_input(pin_name)
@@ -1505,6 +1508,17 @@ def start_space_invaders():
 def handle_space_invaders_input(pin_name):
     space_invaders.handle_input(pin_name)
 
+
+def start_axe():
+    stop_scrolling()
+    axe.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "axe"
+    axe.start()
+
+
+def handle_axe_input(pin_name):
+    axe.handle_input(pin_name)
+
 # --- Notes Program ---
 
 notes_text = ""
@@ -1873,6 +1887,7 @@ def show_games_menu():
         "Tetris",
         "Rock Paper Scissors",
         "Space Invaders",
+        "Axe",
         "Back",
     ]
     menu_instance.selected_item = 0
@@ -1899,6 +1914,9 @@ def handle_games_selection(selection):
         return
     elif selection == "Space Invaders":
         start_space_invaders()
+        return
+    elif selection == "Axe":
+        start_axe()
         return
     elif selection == "Back":
         show_main_menu()
