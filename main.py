@@ -1042,6 +1042,7 @@ def handle_menu_selection(selection):
         return
     elif selection == "Typer":
         start_typer()
+        return
     elif selection == "Image Gallery":
         start_image_gallery()
         return
