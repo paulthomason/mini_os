@@ -967,6 +967,7 @@ def show_main_menu():
         "Settings",
         "Shutdown",
         "Reboot",
+        "Soft Reboot",
     ]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
@@ -1026,6 +1027,12 @@ def handle_menu_selection(selection):
         # Perform actual reboot. Needs proper permissions similar to shutdown.
         subprocess.run(["sudo", "reboot"], check=True)
         exit()  # Exit as the system is rebooting
+    elif selection == "Soft Reboot":
+        menu_instance.display_message_screen("System", "Restarting Mini-OS...", delay=2)
+        print("Restarting mini_os.service via systemctl restart.")
+        # Restart only the service running this script
+        subprocess.run(["sudo", "systemctl", "restart", "mini_os.service"], check=True)
+        exit()
     
     # After any program finishes, redraw the menu
     menu_instance.draw()
