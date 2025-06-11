@@ -8,7 +8,7 @@ Two small games are included: a reaction-based **Button Game** and a memory chal
 
 An **Image Gallery** viewer is also included. Create an `images/` directory (the program will create it if missing) and place your 128x128 PNG or JPEG files there. When started from the menu you can flip through the pictures using the joystick left and right, and press the joystick in to return to the main menu.
 
-The **Notes** program provides an onscreen keyboard for taking quick notes. Use the joystick to move the highlight and press it to select a key. When a new note is started the keyboard begins in uppercase mode and automatically switches to lowercase after the first letter is entered. Press **KEY1** to manually cycle between uppercase, lowercase and punctuation layouts. **KEY2** deletes the last character and **KEY3** saves the note and exits the program. Notes are stored in the `/notes` directory as `note1.txt`, `note2.txt`, and so on.
+Selecting **Notes** from the main menu now opens a small submenu with **Write Note** and **Read Note**. Write Note launches the onscreen keyboard for taking quick notes. Use the joystick to move the highlight and press it to select a key. The keyboard begins in uppercase mode and automatically switches to lowercase after the first letter is entered. Press **KEY1** to cycle between uppercase, lowercase and punctuation layouts, **KEY2** deletes the last character and **KEY3** saves the note. Read Note shows the text files stored in `/notes`; choose one to read it. When viewing a note press **KEY3** to return to the list and press **KEY3** again to go back to the main menu.
 
 ## Setup on Raspberry Pi OS Lite (32-bit)
 

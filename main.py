@@ -449,6 +449,31 @@ def button_event_handler(channel):
                 handle_games_selection(menu_instance.get_selected_item())
             elif pin_name == "KEY1":
                 show_main_menu()
+        elif menu_instance.current_screen == "notes_menu":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_notes_menu_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_main_menu()
+        elif menu_instance.current_screen == "notes_list":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS" and menu_instance.items[0] != "No Notes Found":
+                view_note(menu_instance.get_selected_item())
+            elif pin_name == "KEY3":
+                show_main_menu()
+        elif menu_instance.current_screen == "note_view":
+            if pin_name == "JOY_UP":
+                scroll_note(-1)
+            elif pin_name == "JOY_DOWN":
+                scroll_note(1)
+            elif pin_name == "KEY3":
+                show_notes_list()
         elif menu_instance.current_screen == "nyt_headline":
             if pin_name == "JOY_UP" and current_story_index > 0:
                 draw_headline(current_story_index - 1)
@@ -1364,6 +1389,15 @@ KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
 IRC_KEY_LAYOUTS = [KEYBOARD_LOWER, KEYBOARD_UPPER, KEYBOARD_PUNCT]
 IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
 
+# Note viewing state
+notes_files = []
+current_note_index = 0
+note_lines = []
+note_line_h = 0
+note_offset = 0
+note_max_offset = 0
+note_render = None
+
 
 def draw_notes_screen():
     """Render the current text and onscreen keyboard."""
@@ -1477,6 +1511,76 @@ def save_note(text):
     filename = os.path.join(NOTES_DIR, f"note{next_num}.txt")
     with open(filename, "w") as f:
         f.write(text)
+
+
+def show_notes_list():
+    """Display a menu of saved notes."""
+    stop_scrolling()
+    global notes_files
+    try:
+        notes_files = sorted(
+            f for f in os.listdir(NOTES_DIR) if f.lower().endswith(".txt")
+        )
+    except Exception:
+        notes_files = []
+
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    if notes_files:
+        menu_instance.items = notes_files
+    else:
+        menu_instance.items = ["No Notes Found"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "notes_list"
+    menu_instance.draw()
+
+
+def view_note(filename):
+    """Show the contents of a single note with scrolling."""
+    global note_lines, note_line_h, note_offset, note_max_offset, note_render
+    stop_scrolling()
+    menu_instance.current_screen = "note_view"
+    path = os.path.join(NOTES_DIR, filename)
+    try:
+        with open(path, "r") as f:
+            text = f.read()
+    except Exception:
+        text = "Error reading file"
+
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    max_width = DISPLAY_WIDTH - 10
+    note_lines = wrap_text(text, font_small, max_width, dummy_draw)
+    note_line_h = dummy_draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    note_offset = 0
+    available_h = DISPLAY_HEIGHT - 35
+    note_max_offset = max(0, len(note_lines) * note_line_h - available_h)
+
+    def render():
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), filename, font=font_large, fill=(255, 255, 0))
+        y = 25 - note_offset
+        for line in note_lines:
+            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+            y += note_line_h
+        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+        thread_safe_display(img)
+
+    note_render = render
+    note_render()
+
+
+def scroll_note(direction):
+    global note_offset
+    if not note_render:
+        return
+    note_offset += direction * note_line_h
+    if note_offset < 0:
+        note_offset = 0
+    if note_offset > note_max_offset:
+        note_offset = note_max_offset
+    note_render()
 
 def update_backlight():
     if backlight_pwm:
@@ -1597,6 +1701,27 @@ def handle_games_selection(selection):
         show_main_menu()
 
 
+def show_notes_menu():
+    """Submenu for Notes with write/read options."""
+    stop_scrolling()
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.items = ["Write Note", "Read Note"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "notes_menu"
+    menu_instance.draw()
+
+
+def handle_notes_menu_selection(selection):
+    if selection == "Write Note":
+        start_notes()
+        return
+    elif selection == "Read Note":
+        show_notes_list()
+        return
+    show_main_menu()
+
+
 def show_main_menu():
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
@@ -1638,7 +1763,7 @@ def handle_menu_selection(selection):
     elif selection == "Games":
         show_games_menu()
     elif selection == "Notes":
-        start_notes()
+        show_notes_menu()
         return
     elif selection == "IRC Chat":
         start_chat()
