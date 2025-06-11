@@ -92,13 +92,36 @@ brightness_level = 100  # Percentage 0-100
 backlight_pwm = None
 
 
+def wrap_text(text, font, max_width, draw):
+    """Return a list of lines wrapped to fit within max_width."""
+    lines = []
+    for line in text.split("\n"):
+        words = line.split()
+        current = ""
+        for word in words:
+            test = f"{current} {word}".strip()
+            width = draw.textbbox((0, 0), test, font=font)[2]
+            if width <= max_width:
+                current = test
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+    return lines
+
+
 # --- Menu System ---
 class Menu:
     def __init__(self, items, font=font_medium):
         self.items = items
         self.selected_item = 0
         self.font = font
-        self.current_screen = "main_menu" # Tracks which menu/screen is active
+        self.current_screen = "main_menu"  # Tracks which menu/screen is active
+        self.view_start = 0  # First visible item index
+        # Maximum number of items that fit on the screen
+        self.max_visible_items = 6
 
     def draw(self):
         # Create a new blank image with black background
@@ -110,7 +133,9 @@ class Menu:
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255)) # Separator line
 
         y_offset = 25
-        for i, item in enumerate(self.items):
+        visible_items = self.items[self.view_start:self.view_start + self.max_visible_items]
+        for idx, item in enumerate(visible_items):
+            i = self.view_start + idx
             text_color = (255, 255, 255)  # White
 
             # Determine text size using textbbox (compatible with newer Pillow versions)
@@ -136,6 +161,11 @@ class Menu:
             self.selected_item = (self.selected_item - 1) % len(self.items)
         elif direction == "down":
             self.selected_item = (self.selected_item + 1) % len(self.items)
+        # Adjust scrolling window so selected item stays visible
+        if self.selected_item < self.view_start:
+            self.view_start = self.selected_item
+        elif self.selected_item >= self.view_start + self.max_visible_items:
+            self.view_start = self.selected_item - self.max_visible_items + 1
         self.draw() # Redraw menu after navigation
 
     def get_selected_item(self):
@@ -145,7 +175,13 @@ class Menu:
         img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
         draw = ImageDraw.Draw(img)
         draw.text((5, 5), title, font=font_large, fill=(255, 255, 0)) # Yellow title
-        draw.text((5, 25), message, font=font_medium, fill=(255, 255, 255)) # White message
+        max_width = DISPLAY_WIDTH - 10
+        lines = wrap_text(message, font_medium, max_width, draw)
+        y = 25
+        line_height = draw.textbbox((0, 0), "A", font=font_medium)[3]
+        for line in lines:
+            draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+            y += line_height + 2
         device.display(img)
         time.sleep(delay)
         if clear_after:
@@ -359,8 +395,14 @@ def show_network_info(duration=10):
         img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
         draw = ImageDraw.Draw(img)
         draw.text((5, 5), "Network Info", font=font_large, fill=(255, 255, 0))
-        draw.text((5, 25), f"IP: {ip_addr}", font=font_small, fill=(255, 255, 255))
-        draw.text((5, 40), f"SSID: {ssid}", font=font_small, fill=(255, 255, 255))
+        max_width = DISPLAY_WIDTH - 10
+        y = 25
+        for line in wrap_text(f"IP: {ip_addr}", font_small, max_width, draw):
+            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+            y += draw.textbbox((0, 0), line, font=font_small)[3] + 2
+        for line in wrap_text(f"SSID: {ssid}", font_small, max_width, draw):
+            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+            y += draw.textbbox((0, 0), line, font=font_small)[3] + 2
         device.display(img)
         time.sleep(1)
 
@@ -427,6 +469,7 @@ def draw_brightness_screen():
 def show_settings_menu():
     menu_instance.items = ["Brightness", "Back"]
     menu_instance.selected_item = 0
+    menu_instance.view_start = 0
     menu_instance.current_screen = "settings"
     menu_instance.draw()
 
@@ -444,6 +487,7 @@ def show_main_menu():
         "Shutdown",
     ]
     menu_instance.selected_item = 0
+    menu_instance.view_start = 0
     menu_instance.current_screen = "main_menu"
     menu_instance.draw()
 
