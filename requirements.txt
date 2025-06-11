@@ -2,3 +2,4 @@ luma.lcd
 RPi.GPIO
 requests
 Flask
+pexpect>=4.9.0

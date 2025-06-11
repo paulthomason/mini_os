@@ -12,6 +12,7 @@ import re
 import webbrowser
 import shutil
 import socket
+import pexpect
 from games import snake, tetris, rps, space_invaders, vet_adventure, axe, trivia
 
 # Luma.lcd imports and setup
@@ -589,6 +590,8 @@ def button_event_handler(channel):
                 scroll_message(1)
             elif pin_name == "KEY3":
                 show_main_menu()
+        elif menu_instance.current_screen == "raspi_config":
+            handle_raspi_input(pin_name)
         elif menu_instance.current_screen == "irc_chat":
             handle_irc_chat_input(pin_name)
     else: # Button released
@@ -2120,6 +2123,93 @@ def handle_shell_input(pin_name):
         return
     draw_shell_screen()
 
+# --- raspi-config ---
+
+raspi_proc = None
+raspi_lines = []
+raspi_lock = threading.Lock()
+
+
+def draw_raspi_screen():
+    """Render output from raspi-config in a small font."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    draw.text((5, 5), "raspi-config", font=font_small, fill=(255, 255, 0))
+    with raspi_lock:
+        lines = raspi_lines[-10:]
+    y = 15
+    line_h = draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    for line in lines:
+        draw.text((5, y), line[:20], font=font_small, fill=(255, 255, 255))
+        y += line_h
+    draw.text((5, DISPLAY_HEIGHT - 10), "1=Exit", font=font_small, fill=(0, 255, 255))
+    thread_safe_display(img)
+
+
+def start_raspi_config():
+    """Launch raspi-config using pexpect."""
+    global raspi_proc, raspi_lines
+    stop_scrolling()
+    env = os.environ.copy()
+    env["LINES"] = "15"
+    env["COLUMNS"] = "32"
+    raspi_proc = pexpect.spawn("sudo raspi-config", env=env, encoding="utf-8")
+    raspi_lines = []
+    try:
+        idx = raspi_proc.expect(["[Pp]assword", pexpect.TIMEOUT], timeout=1)
+        if idx == 0:
+            raspi_proc.terminate(force=True)
+            raspi_proc = None
+            menu_instance.display_message_screen("raspi-config", "sudo password required", delay=3)
+            show_settings_menu()
+            return
+    except Exception:
+        pass
+
+    def reader():
+        global raspi_proc
+        while True:
+            try:
+                data = raspi_proc.read_nonblocking(size=1024, timeout=0.1)
+            except pexpect.exceptions.TIMEOUT:
+                continue
+            except pexpect.exceptions.EOF:
+                break
+            with raspi_lock:
+                for l in data.splitlines():
+                    raspi_lines.append(l)
+                    if len(raspi_lines) > 50:
+                        raspi_lines.pop(0)
+            draw_raspi_screen()
+
+    threading.Thread(target=reader, daemon=True).start()
+    menu_instance.current_screen = "raspi_config"
+    draw_raspi_screen()
+
+
+def handle_raspi_input(pin_name):
+    """Send basic navigation keys to raspi-config."""
+    global raspi_proc
+    if raspi_proc is None:
+        return
+    if pin_name == "JOY_UP":
+        raspi_proc.send("\x1b[A")
+    elif pin_name == "JOY_DOWN":
+        raspi_proc.send("\x1b[B")
+    elif pin_name == "JOY_LEFT":
+        raspi_proc.send("\x1b[D")
+    elif pin_name == "JOY_RIGHT":
+        raspi_proc.send("\x1b[C")
+    elif pin_name == "JOY_PRESS" or pin_name == "KEY3":
+        raspi_proc.send("\n")
+    elif pin_name == "KEY1":
+        raspi_proc.sendcontrol("c")
+        raspi_proc.terminate(force=True)
+        raspi_proc = None
+        show_settings_menu()
+        return
+    draw_raspi_screen()
+
 def update_backlight():
     if backlight_pwm:
         backlight_pwm.ChangeDutyCycle(brightness_level)
@@ -2145,6 +2235,7 @@ def show_settings_menu():
         "Display",
         "Wi-Fi Setup",
         "Bluetooth",
+        "raspi-config",
         "Toggle Wi-Fi",
         "Shutdown",
         "Reboot",
@@ -2363,6 +2454,8 @@ def handle_settings_selection(selection):
         show_wifi_networks()
     elif selection == "Bluetooth":
         show_bluetooth_devices()
+    elif selection == "raspi-config":
+        start_raspi_config()
     elif selection == "Toggle Wi-Fi":
         toggle_wifi()
     elif selection == "Shutdown":
