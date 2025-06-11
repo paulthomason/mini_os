@@ -449,9 +449,9 @@ def button_event_handler(channel):
             elif pin_name == "JOY_PRESS":
                 selection = menu_instance.get_selected_item()
                 if selection == "Back" or selection == "No Devices Found":
-                    show_main_menu()
+                    show_settings_menu()
             elif pin_name == "KEY1":
-                show_main_menu()
+                show_settings_menu()
         elif menu_instance.current_screen == "games":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -812,7 +812,23 @@ def show_bluetooth_devices():
             devs = []
         return devs
 
-    devices = scan_devices()
+    devices = []
+
+    def do_scan():
+        nonlocal devices
+        devices = scan_devices()
+
+    scan_thread = threading.Thread(target=do_scan)
+    scan_thread.start()
+
+    dot_cycle = ["", ".", "..", "..."]
+    idx = 0
+    while scan_thread.is_alive():
+        msg = f"Searching for bluetooth devices{dot_cycle[idx % len(dot_cycle)]}"
+        menu_instance.display_message_screen("Bluetooth", msg, delay=0.5, clear_after=False)
+        idx += 1
+    scan_thread.join()
+
     if not devices:
         devices = ["No Devices Found"]
 
@@ -1736,6 +1752,7 @@ def show_settings_menu():
     menu_instance.items = [
         "Display",
         "Wi-Fi Setup",
+        "Bluetooth",
         "Toggle Wi-Fi",
         "Shutdown",
         "Reboot",
@@ -1891,7 +1908,6 @@ def show_main_menu():
         "Image Gallery",
         "System Monitor",
         "Network Info",
-        "Bluetooth",
         "Top Stories",
         "Date & Time",
         "Show Info",
@@ -1908,6 +1924,8 @@ def handle_settings_selection(selection):
         show_display_menu()
     elif selection == "Wi-Fi Setup":
         show_wifi_networks()
+    elif selection == "Bluetooth":
+        show_bluetooth_devices()
     elif selection == "Toggle Wi-Fi":
         toggle_wifi()
     elif selection == "Shutdown":
@@ -1942,9 +1960,6 @@ def handle_menu_selection(selection):
         run_system_monitor()
     elif selection == "Network Info":
         show_network_info()
-    elif selection == "Bluetooth":
-        show_bluetooth_devices()
-        return
     elif selection == "Top Stories":
         show_top_stories()
         return
