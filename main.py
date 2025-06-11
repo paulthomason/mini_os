@@ -157,7 +157,7 @@ class Menu:
 
         # Draw header
         header_text = "Mini-OS Menu"
-        if self.current_screen == "nyt_list":
+        if self.current_screen in ("nyt_list", "nyt_headline"):
             header_text = "NYT Top Stories"
         draw.text((5, 2), header_text, font=font_large, fill=(0, 255, 255))
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255)) # Separator line
@@ -288,13 +288,13 @@ def button_event_handler(channel):
                     connect_to_wifi(selection)
             elif pin_name == "KEY1":
                 show_settings_menu()
-        elif menu_instance.current_screen == "nyt_list":
-            if pin_name == "JOY_UP":
-                menu_instance.navigate("up")
-            elif pin_name == "JOY_DOWN":
-                menu_instance.navigate("down")
+        elif menu_instance.current_screen == "nyt_headline":
+            if pin_name == "JOY_UP" and current_story_index > 0:
+                draw_headline(current_story_index - 1)
+            elif pin_name == "JOY_DOWN" and current_story_index < len(nyt_stories) - 1:
+                draw_headline(current_story_index + 1)
             elif pin_name == "KEY1":
-                draw_story_detail(menu_instance.selected_item)
+                draw_story_detail(current_story_index)
             elif pin_name == "KEY3":
                 show_main_menu()
         elif menu_instance.current_screen == "nyt_story":
@@ -396,7 +396,7 @@ def run_git_pull():
 
 
 def show_top_stories():
-    """Fetch and display NYT top stories in a selectable menu."""
+    """Fetch NYT top stories and show the first headline."""
     stop_scrolling()
     global nyt_stories
     try:
@@ -414,19 +414,29 @@ def show_top_stories():
         show_main_menu()
         return
 
-    titles = []
-    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
-    dummy_draw = ImageDraw.Draw(dummy_img)
-    for story in nyt_stories:
-        lines = wrap_text(story.get("title", ""), font_medium, DISPLAY_WIDTH - 10, dummy_draw)
-        titles.append("\n".join(lines) + "\n")
+    draw_headline(0)
 
-    menu_instance.items = titles
-    menu_instance.selected_item = 0
-    menu_instance.view_start = 0
-    menu_instance.current_screen = "nyt_list"
-    menu_instance.max_visible_items = 3
-    menu_instance.draw()
+
+def draw_headline(index):
+    """Display a single headline identified by index."""
+    global current_story_index
+    current_story_index = index
+    menu_instance.current_screen = "nyt_headline"
+    story = nyt_stories[index]
+    title = story.get("title", "")
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    max_width = DISPLAY_WIDTH - 10
+    lines = wrap_text(title, font_medium, max_width, draw)
+    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
+    draw.text((5, 5), "NYT Top Stories", font=font_large, fill=(255, 255, 0))
+    y = 25
+    for line in lines:
+        draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+        y += line_h
+    footer = f"{index + 1}/{len(nyt_stories)} 1=Read 3=Back"
+    draw.text((5, DISPLAY_HEIGHT - 10), footer, font=font_small, fill=(0, 255, 255))
+    device.display(img)
 
 
 def draw_story_detail(index):
