@@ -580,6 +580,9 @@ def button_event_handler(channel):
                 start_shell()
             elif pin_name == "KEY1":
                 show_main_menu()
+        elif menu_instance.current_screen == "sudo_password":
+            if pin_name in BUTTON_PINS:
+                handle_sudo_password_input(pin_name)
         elif menu_instance.current_screen == "image_gallery":
             if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
                 handle_gallery_input(pin_name)
@@ -1976,6 +1979,13 @@ shell_output_offset = 0
 shell_output_max_offset = 0
 shell_output_render = None
 
+# Variables for sudo password prompt
+sudo_pending_cmd = None
+sudo_pw_text = ""
+sudo_pw_keyboard_state = 1
+sudo_pw_row = 1
+sudo_pw_col = 0
+
 
 def draw_shell_screen():
     """Render the shell input screen with onscreen keyboard."""
@@ -2078,10 +2088,133 @@ def scroll_shell_output(direction):
     shell_output_render()
 
 
+def draw_sudo_password_screen():
+    """Render the password entry screen for sudo."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+
+    max_width = DISPLAY_WIDTH - 10
+    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
+    stars = "*" * len(sudo_pw_text)
+    lines = wrap_text(stars, font_medium, max_width, draw)
+    kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
+    tips_height = 10
+    max_lines = (kb_y - 10) // line_h
+    start = max(0, len(lines) - max_lines)
+    y = 5
+    draw.text((5, y), "sudo password:", font=font_small, fill=(255, 255, 0))
+    y += line_h
+    for line in lines[start:]:
+        draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+        y += line_h
+
+    row_h = (DISPLAY_HEIGHT - kb_y - tips_height) // len(KEY_LAYOUT)
+    key_w = DISPLAY_WIDTH // 10
+    for r, row in enumerate(KEY_LAYOUT):
+        if r == len(KEY_LAYOUT) - 1 and len(row) == 1:
+            offset_x = 5
+            this_key_w = DISPLAY_WIDTH - offset_x * 2
+        else:
+            offset_x = (DISPLAY_WIDTH - len(row) * key_w) // 2
+            this_key_w = key_w
+        for c, ch in enumerate(row):
+            x = offset_x + c * this_key_w
+            yk = kb_y + r * row_h
+            rect = (x + 1, yk + 1, x + this_key_w - 2, yk + row_h - 2)
+            if r == sudo_pw_row and c == sudo_pw_col:
+                draw.rectangle(rect, fill=(0, 255, 0))
+                text_color = (0, 0, 0)
+            else:
+                draw.rectangle(rect, outline=(255, 255, 255))
+                text_color = (255, 255, 255)
+            bbox = draw.textbbox((0, 0), ch, font=font_small)
+            tx = x + (this_key_w - (bbox[2] - bbox[0])) // 2
+            ty = yk + (row_h - (bbox[3] - bbox[1])) // 2
+            draw.text((tx, ty), ch, font=font_small, fill=text_color)
+
+    tips = "1=Shift 2=Del 3=OK/Exit"
+    draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips, font=font_small, fill=(0, 255, 255))
+
+    thread_safe_display(img)
+
+
+def start_sudo_password(cmd):
+    """Prompt the user to enter the sudo password."""
+    global sudo_pending_cmd, sudo_pw_text, sudo_pw_keyboard_state, KEY_LAYOUT, sudo_pw_row, sudo_pw_col
+    stop_scrolling()
+    sudo_pending_cmd = cmd
+    sudo_pw_text = ""
+    sudo_pw_keyboard_state = 1
+    KEY_LAYOUT = KEY_LAYOUTS[sudo_pw_keyboard_state]
+    sudo_pw_row = 1
+    sudo_pw_col = 0
+    menu_instance.current_screen = "sudo_password"
+    draw_sudo_password_screen()
+
+
+def run_sudo_command(cmd, password):
+    """Run a sudo command using the provided password."""
+    global shell_text
+    cmd_with_s = re.sub(r"^sudo\b", "sudo -S -k", cmd.strip())
+    try:
+        result = subprocess.run(
+            cmd_with_s,
+            input=password + "\n",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=20,
+        )
+        success = result.returncode == 0
+        output = result.stdout
+    except Exception as e:
+        success = False
+        output = str(e)
+    shell_text = ""
+    status = "Success" if success else "Failed"
+    show_shell_output(cmd, f"{status}\n{output}")
+
+
+def handle_sudo_password_input(pin_name):
+    """Handle input for the sudo password screen."""
+    global sudo_pw_row, sudo_pw_col, sudo_pw_text, sudo_pw_keyboard_state, KEY_LAYOUT
+    if pin_name == "JOY_LEFT" and sudo_pw_col > 0:
+        sudo_pw_col -= 1
+    elif pin_name == "JOY_RIGHT" and sudo_pw_col < len(KEY_LAYOUT[sudo_pw_row]) - 1:
+        sudo_pw_col += 1
+    elif pin_name == "JOY_UP" and sudo_pw_row > 0:
+        sudo_pw_row -= 1
+        sudo_pw_col = min(sudo_pw_col, len(KEY_LAYOUT[sudo_pw_row]) - 1)
+    elif pin_name == "JOY_DOWN" and sudo_pw_row < len(KEY_LAYOUT) - 1:
+        sudo_pw_row += 1
+        sudo_pw_col = min(sudo_pw_col, len(KEY_LAYOUT[sudo_pw_row]) - 1)
+    elif pin_name == "JOY_PRESS":
+        sudo_pw_text += KEY_LAYOUT[sudo_pw_row][sudo_pw_col]
+    elif pin_name == "KEY1":
+        sudo_pw_keyboard_state = (sudo_pw_keyboard_state + 1) % len(KEY_LAYOUTS)
+        KEY_LAYOUT = KEY_LAYOUTS[sudo_pw_keyboard_state]
+        sudo_pw_row = min(sudo_pw_row, len(KEY_LAYOUT) - 1)
+        sudo_pw_col = min(sudo_pw_col, len(KEY_LAYOUT[sudo_pw_row]) - 1)
+    elif pin_name == "KEY2":
+        sudo_pw_text = sudo_pw_text[:-1]
+    elif pin_name == "KEY3":
+        if sudo_pw_text:
+            run_sudo_command(sudo_pending_cmd, sudo_pw_text)
+        else:
+            show_main_menu()
+        return
+    draw_sudo_password_screen()
+
+
 def run_shell_command(cmd):
     """Execute the given command and show its output."""
     global shell_text
     if not cmd.strip():
+        return
+    if cmd.strip().startswith("sudo"):
+        shell_text = ""
+        start_sudo_password(cmd)
         return
     try:
         output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=10).decode()
