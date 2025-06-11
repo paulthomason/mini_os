@@ -161,6 +161,12 @@ irc_socket = None
 irc_thread = None
 chat_messages = []
 
+# IRC typing state
+irc_typing = False
+irc_input_text = ""
+IRC_KEY_LAYOUTS = None  # defined after keyboard layouts
+irc_keyboard_state = 0
+
 
 def wrap_text(text, font, max_width, draw):
     """Return a list of lines wrapped to fit within max_width."""
@@ -446,8 +452,7 @@ def button_event_handler(channel):
             if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
                 handle_gallery_input(pin_name)
         elif menu_instance.current_screen == "irc_chat":
-            if pin_name == "KEY3":
-                show_main_menu()
+            handle_irc_chat_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -794,8 +799,125 @@ def draw_chat_screen():
         draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
         y += line_h
 
-    draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+    draw.text((5, DISPLAY_HEIGHT - 10), "Press=Type 3=Back", font=font_small, fill=(0, 255, 255))
     thread_safe_display(img)
+
+
+def draw_irc_input_screen():
+    """Display the on-screen keyboard for IRC input."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+
+    max_width = DISPLAY_WIDTH - 10
+    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
+    lines = wrap_text(irc_input_text, font_medium, max_width, draw)
+    kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
+    tips_height = 10
+    max_lines = (kb_y - 10) // line_h
+    start = max(0, len(lines) - max_lines)
+    y = 5
+    for line in lines[start:]:
+        draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+        y += line_h
+
+    row_h = (DISPLAY_HEIGHT - kb_y - tips_height) // len(IRC_KEY_LAYOUT)
+    key_w = DISPLAY_WIDTH // 10
+    for r, row in enumerate(IRC_KEY_LAYOUT):
+        if r == len(IRC_KEY_LAYOUT) - 1 and len(row) == 1:
+            offset_x = 5
+            this_key_w = DISPLAY_WIDTH - offset_x * 2
+        else:
+            offset_x = (DISPLAY_WIDTH - len(row) * key_w) // 2
+            this_key_w = key_w
+        for c, ch in enumerate(row):
+            x = offset_x + c * this_key_w
+            y = kb_y + r * row_h
+            rect = (x + 1, y + 1, x + this_key_w - 2, y + row_h - 2)
+            if r == typer_row and c == typer_col:
+                draw.rectangle(rect, fill=(0, 255, 0))
+                text_color = (0, 0, 0)
+            else:
+                draw.rectangle(rect, outline=(255, 255, 255))
+                text_color = (255, 255, 255)
+            bbox = draw.textbbox((0, 0), ch, font=font_small)
+            tx = x + (this_key_w - (bbox[2] - bbox[0])) // 2
+            ty = y + (row_h - (bbox[3] - bbox[1])) // 2
+            draw.text((tx, ty), ch, font=font_small, fill=text_color)
+
+    tips = "1=Delete 2=Shift 3=Cancel"
+    draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips, font=font_small, fill=(0, 255, 255))
+
+    thread_safe_display(img)
+
+
+def start_irc_input():
+    """Begin typing a message for IRC."""
+    global irc_typing, irc_input_text, irc_keyboard_state, IRC_KEY_LAYOUT, typer_row, typer_col
+    irc_typing = True
+    irc_input_text = ""
+    irc_keyboard_state = 0
+    IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
+    typer_row = 1
+    typer_col = 0
+    menu_instance.current_screen = "irc_chat"
+    draw_irc_input_screen()
+
+
+def send_irc_message(msg):
+    """Send a message to the IRC channel."""
+    if not msg:
+        return
+    try:
+        if irc_socket:
+            irc_socket.sendall(f"PRIVMSG {IRC_CHANNEL} :{msg}\r\n".encode())
+    except Exception as e:
+        chat_messages.append(f"Send failed: {e}")
+    chat_messages.append(f"{IRC_NICK}> {msg}")
+    if len(chat_messages) > 100:
+        chat_messages.pop(0)
+
+
+def handle_irc_chat_input(pin_name):
+    """Handle input events for IRC chat and typing mode."""
+    global irc_typing, irc_input_text, irc_keyboard_state, IRC_KEY_LAYOUT, typer_row, typer_col
+
+    if not irc_typing:
+        if pin_name == "JOY_PRESS":
+            start_irc_input()
+        elif pin_name == "KEY3":
+            show_main_menu()
+    else:
+        if pin_name == "JOY_LEFT" and typer_col > 0:
+            typer_col -= 1
+        elif pin_name == "JOY_RIGHT" and typer_col < len(IRC_KEY_LAYOUT[typer_row]) - 1:
+            typer_col += 1
+        elif pin_name == "JOY_UP" and typer_row > 0:
+            typer_row -= 1
+            typer_col = min(typer_col, len(IRC_KEY_LAYOUT[typer_row]) - 1)
+        elif pin_name == "JOY_DOWN" and typer_row < len(IRC_KEY_LAYOUT) - 1:
+            typer_row += 1
+            typer_col = min(typer_col, len(IRC_KEY_LAYOUT[typer_row]) - 1)
+        elif pin_name == "JOY_PRESS":
+            send_irc_message(irc_input_text)
+            irc_typing = False
+            irc_input_text = ""
+            draw_chat_screen()
+            return
+        elif pin_name == "KEY1":
+            irc_input_text = irc_input_text[:-1]
+        elif pin_name == "KEY2":
+            irc_keyboard_state = (irc_keyboard_state + 1) % len(IRC_KEY_LAYOUTS)
+            IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
+            typer_row = min(typer_row, len(IRC_KEY_LAYOUT) - 1)
+            typer_col = min(typer_col, len(IRC_KEY_LAYOUT[typer_row]) - 1)
+        elif pin_name == "KEY3":
+            irc_typing = False
+            irc_input_text = ""
+            draw_chat_screen()
+            return
+        draw_irc_input_screen()
+
+
 
 
 def start_chat():
@@ -804,6 +926,9 @@ def start_chat():
     if irc_socket is None:
         connect_irc()
     menu_instance.current_screen = "irc_chat"
+    global irc_typing, irc_input_text
+    irc_typing = False
+    irc_input_text = ""
     draw_chat_screen()
 
 def run_system_monitor(duration=10):
@@ -1132,6 +1257,10 @@ KEYBOARD_PUNCT = [
 
 KEY_LAYOUTS = [KEYBOARD_UPPER, KEYBOARD_LOWER, KEYBOARD_PUNCT]
 KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
+
+# IRC keyboard uses lower case by default
+IRC_KEY_LAYOUTS = [KEYBOARD_LOWER, KEYBOARD_UPPER, KEYBOARD_PUNCT]
+IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
 
 
 def draw_typer_screen():
