@@ -135,6 +135,106 @@ QUESTIONS = {
             "opts": ["HST", "PST", "MST"],
             "a": 0,
         },
+        {
+            "q": "Which island has Waimea Canyon?",
+            "opts": ["Oahu", "Kauai", "Maui"],
+            "a": 1,
+        },
+        {
+            "q": "What instrument often accompanies hula?",
+            "opts": ["Ukulele", "Drums", "Violin"],
+            "a": 0,
+        },
+        {
+            "q": "Traditional raw fish dish?",
+            "opts": ["Poke", "Loco Moco", "Spam musubi"],
+            "a": 0,
+        },
+        {
+            "q": "Iolani Palace is in which city?",
+            "opts": ["Honolulu", "Lahaina", "Hilo"],
+            "a": 0,
+        },
+        {
+            "q": "Hawaii's state tree?",
+            "opts": ["Kukui", "Coconut", "Banyan"],
+            "a": 0,
+        },
+        {
+            "q": "Which island was the Pineapple Isle?",
+            "opts": ["Lanai", "Niihau", "Oahu"],
+            "a": 0,
+        },
+        {
+            "q": "Molokini crater is near which island?",
+            "opts": ["Maui", "Oahu", "Kauai"],
+            "a": 0,
+        },
+        {
+            "q": "Mount Waialeale is found on?",
+            "opts": ["Kauai", "Oahu", "Hawaii"],
+            "a": 0,
+        },
+        {
+            "q": "Official state sport?",
+            "opts": ["Surfing", "Canoeing", "Hiking"],
+            "a": 0,
+        },
+        {
+            "q": "Year the monarchy was overthrown?",
+            "opts": ["1893", "1880", "1900"],
+            "a": 0,
+        },
+        {
+            "q": "Lanai City is on which island?",
+            "opts": ["Lanai", "Oahu", "Maui"],
+            "a": 0,
+        },
+        {
+            "q": "Haleakala volcano rises on?",
+            "opts": ["Maui", "Oahu", "Kauai"],
+            "a": 0,
+        },
+        {
+            "q": "Which island is the Forbidden Isle?",
+            "opts": ["Niihau", "Lanai", "Kahoolawe"],
+            "a": 0,
+        },
+        {
+            "q": "U.S. president born in Honolulu?",
+            "opts": ["Barack Obama", "Joe Biden", "John Kennedy"],
+            "a": 0,
+        },
+        {
+            "q": "Color of the state flower?",
+            "opts": ["Yellow", "Red", "Pink"],
+            "a": 0,
+        },
+        {
+            "q": "Highest sea cliffs are on?",
+            "opts": ["Molokai", "Hawaii", "Oahu"],
+            "a": 0,
+        },
+        {
+            "q": "Largest city on the Big Island?",
+            "opts": ["Hilo", "Kona", "Pearl City"],
+            "a": 0,
+        },
+        {
+            "q": "Demigod who lassoed the sun?",
+            "opts": ["Maui", "Pele", "Hiiaka"],
+            "a": 0,
+        },
+        {
+            "q": "Meal of rice, burger, egg & gravy?",
+            "opts": ["Loco Moco", "Poke", "Manapua"],
+            "a": 0,
+        },
+        {
+            "q": "Kalaupapa leprosy colony is on?",
+            "opts": ["Molokai", "Maui", "Oahu"],
+            "a": 0,
+        },
     ],
     "Veterinary Internal Medicine": [
         {
@@ -236,6 +336,106 @@ QUESTIONS = {
             "q": "A common tick-borne disease in dogs?",
             "opts": ["Leptospirosis", "Lyme disease", "Distemper"],
             "a": 1,
+        },
+        {
+            "q": "Causative agent of toxoplasmosis?",
+            "opts": ["Toxoplasma gondii", "Giardia", "Coccidia"],
+            "a": 0,
+        },
+        {
+            "q": "Hormone lacking in diabetes mellitus?",
+            "opts": ["Insulin", "Cortisol", "Thyroxine"],
+            "a": 0,
+        },
+        {
+            "q": "Primary cause of canine Cushing's?",
+            "opts": ["Pituitary tumor", "Adrenal atrophy", "Kidney disease"],
+            "a": 0,
+        },
+        {
+            "q": "Normal cat heart rate?",
+            "opts": ["120-160", "60-90", "40-60"],
+            "a": 0,
+        },
+        {
+            "q": "Common cause of canine seizures?",
+            "opts": ["Epilepsy", "Hyperkalemia", "Hypothyroidism"],
+            "a": 0,
+        },
+        {
+            "q": "Heartworm prevention drug?",
+            "opts": ["Ivermectin", "Amoxicillin", "Prednisone"],
+            "a": 0,
+        },
+        {
+            "q": "Test used to detect FeLV?",
+            "opts": ["Snap ELISA", "Fecal float", "CT scan"],
+            "a": 0,
+        },
+        {
+            "q": "Panleukopenia affects primarily?",
+            "opts": ["Cats", "Dogs", "Horses"],
+            "a": 0,
+        },
+        {
+            "q": "Leptospirosis damages which organ most?",
+            "opts": ["Kidneys", "Heart", "Lungs"],
+            "a": 0,
+        },
+        {
+            "q": "Treatment for canine hypothyroidism?",
+            "opts": ["Levothyroxine", "Insulin", "Progesterone"],
+            "a": 0,
+        },
+        {
+            "q": "CBC stands for?",
+            "opts": ["Complete Blood Count", "Critical Body Condition", "Calcium Binding Complex"],
+            "a": 0,
+        },
+        {
+            "q": "Breed prone to dilated cardiomyopathy?",
+            "opts": ["Doberman", "Chihuahua", "Pug"],
+            "a": 0,
+        },
+        {
+            "q": "Drug of choice for status epilepticus?",
+            "opts": ["Diazepam", "Hydrocodone", "Carprofen"],
+            "a": 0,
+        },
+        {
+            "q": "Pyometra is a?",
+            "opts": ["Uterine infection", "Ear infection", "Bone cancer"],
+            "a": 0,
+        },
+        {
+            "q": "Nutrient restricted in renal diets?",
+            "opts": ["Phosphorus", "Fat", "Carbohydrate"],
+            "a": 0,
+        },
+        {
+            "q": "Cattle bloat affects which compartment?",
+            "opts": ["Rumen", "Abomasum", "Omasum"],
+            "a": 0,
+        },
+        {
+            "q": "Medication for feline asthma?",
+            "opts": ["Bronchodilator", "Insulin", "Diuretic"],
+            "a": 0,
+        },
+        {
+            "q": "Addison's disease treated with?",
+            "opts": ["Steroids", "Antibiotics", "Insulin"],
+            "a": 0,
+        },
+        {
+            "q": "PCR test detects?",
+            "opts": ["DNA/RNA", "Proteins", "Electrolytes"],
+            "a": 0,
+        },
+        {
+            "q": "Which organ is affected by hepatitis?",
+            "opts": ["Liver", "Heart", "Spleen"],
+            "a": 0,
         },
     ],
 }
