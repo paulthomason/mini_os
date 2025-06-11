@@ -92,22 +92,45 @@ timer_stop_event = threading.Event()
 timer_end_time = 0
 
 # --- Fonts ---
-# Use DejaVu Sans which is highly legible on small displays.
-try:
-    font_small = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11
-    )
-    font_medium = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 13
-    )
-    font_large = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 15
-    )
-except IOError:
-    print("Defaulting to PIL built-in font as custom font not found.")
-    font_small = ImageFont.load_default()
-    font_medium = ImageFont.load_default()
-    font_large = ImageFont.load_default()
+# Allow switching between a few system fonts.
+
+# Map display names to (regular, bold) font paths
+FONT_OPTIONS = {
+    "Sans": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ),
+    "Serif": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
+    ),
+    "Mono": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+    ),
+}
+
+font_choice = "Sans"
+
+
+def load_fonts(choice="Sans"):
+    """Load global fonts for the UI."""
+    global font_small, font_medium, font_large, font_choice
+    font_choice = choice if choice in FONT_OPTIONS else "Sans"
+    regular, bold = FONT_OPTIONS[font_choice]
+    try:
+        font_small = ImageFont.truetype(regular, 11)
+        font_medium = ImageFont.truetype(regular, 13)
+        font_large = ImageFont.truetype(bold, 15)
+    except IOError:
+        print("Defaulting to PIL built-in font as custom font not found.")
+        font_small = ImageFont.load_default()
+        font_medium = ImageFont.load_default()
+        font_large = ImageFont.load_default()
+
+
+# Load default fonts at startup
+load_fonts(font_choice)
 
 # --- Backlight Control ---
 brightness_level = 100  # Percentage 0-100
@@ -295,6 +318,20 @@ def button_event_handler(channel):
                     show_settings_menu()
                 else:
                     connect_to_wifi(selection)
+            elif pin_name == "KEY1":
+                show_settings_menu()
+        elif menu_instance.current_screen == "font_list":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                selection = menu_instance.get_selected_item()
+                if selection == "Back":
+                    show_settings_menu()
+                else:
+                    handle_font_selection(selection)
+                    show_settings_menu()
             elif pin_name == "KEY1":
                 show_settings_menu()
         elif menu_instance.current_screen == "games":
@@ -1016,11 +1053,29 @@ def draw_brightness_screen():
 def show_settings_menu():
     stop_scrolling()
     menu_instance.max_visible_items = 6
-    menu_instance.items = ["Brightness", "Wi-Fi Setup", "Back"]
+    menu_instance.items = ["Brightness", "Font Picker", "Wi-Fi Setup", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "settings"
     menu_instance.draw()
+
+
+def show_font_menu():
+    """Display available fonts to choose from."""
+    stop_scrolling()
+    fonts = list(FONT_OPTIONS.keys()) + ["Back"]
+    menu_instance.items = fonts
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "font_list"
+    menu_instance.draw()
+
+
+def handle_font_selection(font_name):
+    """Set UI fonts to the selected family."""
+    load_fonts(font_name)
+    menu_instance.font = font_medium
+    menu_instance.display_message_screen("Font", f"Using {font_choice}", delay=1)
 
 
 def show_games_menu():
@@ -1071,6 +1126,8 @@ def handle_settings_selection(selection):
     if selection == "Brightness":
         menu_instance.current_screen = "brightness"
         draw_brightness_screen()
+    elif selection == "Font Picker":
+        show_font_menu()
     elif selection == "Wi-Fi Setup":
         show_wifi_networks()
     elif selection == "Back":
