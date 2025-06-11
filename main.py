@@ -883,6 +883,36 @@ def connect_bluetooth_device(device):
         show_scroll_message("Bluetooth Error", details)
 
 
+def connect_bluetooth_device_with_pin(device):
+    """Pair and connect to a Bluetooth device, automatically confirming the PIN."""
+    m = re.search(r"\(([0-9A-F:]{17})\)$", device)
+    if not m:
+        menu_instance.display_message_screen("Bluetooth", "Invalid device", delay=2)
+        return
+    addr = m.group(1)
+    # Prepare a bluetoothctl command sequence that confirms the passkey
+    bt_commands = f"pair {addr}\nyes\ntrust {addr}\nconnect {addr}\nquit\n"
+    try:
+        subprocess.run(
+            ["bluetoothctl"],
+            input=bt_commands,
+            text=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        menu_instance.display_message_screen("Bluetooth", f"Connected to {device}", delay=3)
+    except subprocess.CalledProcessError as e:
+        stdout = e.stdout.decode().strip() if e.stdout else ""
+        stderr = e.stderr.decode().strip() if e.stderr else ""
+        details = "\n".join(filter(None, [stdout, stderr])).strip()
+        if not details:
+            details = "Failed to connect. Ensure the device is in pairing mode and in range."
+        else:
+            details = f"Failed to connect to {device}.\n{details}"
+        show_scroll_message("Bluetooth Error", details)
+
+
 def connect_to_wifi(ssid):
     """Attempt to connect to the given SSID using nmcli."""
     password = os.environ.get("MINI_OS_WIFI_PASSWORD")
