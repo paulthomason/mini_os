@@ -68,3 +68,11 @@ A lightweight web server can be started from the **Utilities** menu. It exposes
 a simple browser based interface for viewing and updating settings. From the
 `/settings` page you can change the display brightness, select a font and adjust
 the text size. Wi-Fi can also be toggled on or off directly from the browser.
+
+## Bluetooth
+
+From **Settings** choose **Bluetooth** to scan for nearby devices. Select your
+iPhone or other device with the joystick. Press **KEY1** to attempt a direct
+connection or **KEY2** to pair and connect (useful for phones that require
+confirming a passkey such as the iPhone 15 Pro Max). Ensure the phone is in
+Bluetooth pairing mode when attempting to connect.

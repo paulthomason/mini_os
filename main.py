@@ -456,6 +456,12 @@ def button_event_handler(channel):
                     show_settings_menu()
                 else:
                     connect_bluetooth_device(selection)
+            elif pin_name == "KEY2":
+                selection = menu_instance.get_selected_item()
+                if selection == "Back" or selection == "No Devices Found":
+                    show_settings_menu()
+                else:
+                    connect_bluetooth_device_with_pin(selection)
         elif menu_instance.current_screen == "games":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
