@@ -4,7 +4,7 @@ This repository contains a simple menu-based interface for a Raspberry Pi with a
 
 The interface now includes a Settings screen. A **Display** submenu lets you change the LCD backlight brightness, choose a different font and adjust the text size. Additional menu options briefly display the current date and time, a system monitor showing CPU temperature, load, frequency, memory and disk usage, and a network info screen with the current IP address and Wi-Fi SSID. Shutdown and Reboot options are available at the bottom of the Settings screen for safely powering off or restarting the Pi. An "Update and Restart" option pulls the latest code and restarts the service so the update takes effect.
 
-Two small games are included: a reaction-based **Button Game** and a memory challenge called **Launch Codes**. They can be started from the **Games** submenu and make use of the three buttons and joystick directions for input.
+Several small games are included: the reaction-based **Button Game**, the memory challenge **Launch Codes**, classics like **Snake** and **Tetris**, a simple **Rock Paper Scissors**, **Space Invaders**, and a text based adventure called **Vet Adventure**. They can be started from the **Games** submenu and make use of the three buttons and joystick directions for input.
 
 An **Image Gallery** viewer is also included. Create an `images/` directory (the program will create it if missing) and place your 128x128 PNG or JPEG files there. When started from the menu you can flip through the pictures using the joystick left and right, and press the joystick in to return to the main menu.
 
