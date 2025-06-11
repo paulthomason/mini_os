@@ -319,52 +319,6 @@ menu_instance = None
 # They should handle their own display logic using the 'device' object from luma.lcd.
 # Crucially, they should manage their own execution and return control to the main menu.
 
-def run_program1():
-    menu_instance.display_message_screen("Program 1", "Running a sample program...", delay=2)
-    # Example: Launch an external Python script using subprocess.run()
-    # It's important that the subprocess eventually exits.
-    try:
-        # Absolute path is highly recommended for systemd services
-        # Replace '/path/to/your/program1.py' with the actual path
-        # If your program needs to interact with the display, it needs to get the 'device' object,
-        # or you can pass display commands via a queue/pipe, or render to an off-screen buffer and transfer.
-        # For simple programs that just do calculations or log, this is fine.
-        print("Launching /home/pi/my_program1.py (replace with actual path)")
-        # Example of launching a simple script that prints to console (which goes to journalctl)
-        # If your subprocess needs to take over the display directly, it would need to initialize
-        # its own luma.lcd device, which can conflict if not managed carefully.
-        # For this setup, it's better if external programs are purely text-based
-        # or have their own lightweight display methods that don't conflict with luma.lcd.
-        # For a truly "mini-OS" feel, subprocesses could render *to* a new PIL image
-        # and pass it back to the main_menu to display. This is more complex.
-        
-        # For this simple example, we'll simulate a program running
-        menu_instance.display_message_screen("Program 1", "Doing some work...", delay=3)
-        # If the external program needs to run independently and maybe take over the screen completely,
-        # you'd need to stop the main menu's display updates and let the subprocess manage it,
-        # then re-initialize the main menu's display when the subprocess exits. This is advanced.
-        
-        # Here, we'll just simulate a blocking operation.
-        time.sleep(2) 
-
-        # Example: If your external program is another Python script
-        # subprocess.run(["/usr/bin/python3", "/home/pi/my_program1.py"], check=True)
-
-        menu_instance.display_message_screen("Program 1", "Finished!", delay=1.5)
-    except FileNotFoundError:
-        menu_instance.display_message_screen("Error", "Program 1 script not found!", delay=2)
-    except subprocess.CalledProcessError as e:
-        menu_instance.display_message_screen("Error", f"Program 1 failed: {e}", delay=3)
-    finally:
-        # Ensure display is cleared and control returns to menu
-        menu_instance.clear_display()
-
-
-def run_program2():
-    menu_instance.display_message_screen("Program 2", "Starting another app...", delay=2)
-    time.sleep(2)
-    menu_instance.display_message_screen("Program 2", "Done!", delay=1.5)
-    menu_instance.clear_display()
 
 
 def run_git_pull():
@@ -818,8 +772,6 @@ def show_settings_menu():
 def show_main_menu():
     stop_scrolling()
     menu_instance.items = [
-        "Run Program 1",
-        "Run Program 2",
         "Update Mini-OS",
         "Button Game",
         "Launch Codes",
@@ -849,11 +801,7 @@ def handle_settings_selection(selection):
 
 def handle_menu_selection(selection):
     print(f"Selected: {selection}") # This output goes to journalctl
-    if selection == "Run Program 1":
-        run_program1()
-    elif selection == "Run Program 2":
-        run_program2()
-    elif selection == "Update Mini-OS":
+    if selection == "Update Mini-OS":
         run_git_pull()
     elif selection == "Button Game":
         start_button_game()
