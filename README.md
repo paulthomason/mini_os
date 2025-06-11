@@ -6,6 +6,8 @@ The interface now includes a basic Settings screen where you can adjust the LCD 
 
 Two small games are included: a reaction-based **Button Game** and a memory challenge called **Launch Codes**. Both can be started from the main menu and make use of the three buttons and joystick directions for input.
 
+An **Image Gallery** viewer is also included. Create an `images/` directory (the program will create it if missing) and place your 128x128 PNG or JPEG files there. When started from the menu you can flip through the pictures using the joystick left and right, and press the joystick in to return to the main menu.
+
 ## Setup on Raspberry Pi OS Lite (32-bit)
 
 Install the required packages and enable the SPI interface:
