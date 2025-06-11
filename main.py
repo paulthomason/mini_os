@@ -7,6 +7,8 @@ from datetime import datetime
 import os
 import random
 import threading
+import requests
+import webbrowser
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -95,6 +97,14 @@ except IOError:
 # --- Backlight Control ---
 brightness_level = 100  # Percentage 0-100
 backlight_pwm = None
+
+# --- NYT Top Stories ---
+nyt_stories = []
+current_story_index = 0
+try:
+    from nyt_config import NYT_API_KEY
+except Exception:
+    NYT_API_KEY = "YOUR_API_KEY_HERE"
 
 
 def wrap_text(text, font, max_width, draw):
@@ -263,6 +273,20 @@ def button_event_handler(channel):
                     connect_to_wifi(selection)
             elif pin_name == "KEY1":
                 show_settings_menu()
+        elif menu_instance.current_screen == "nyt_list":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "KEY1":
+                draw_story_detail(menu_instance.selected_item)
+            elif pin_name == "KEY3":
+                show_main_menu()
+        elif menu_instance.current_screen == "nyt_story":
+            if pin_name == "KEY1":
+                open_current_story()
+            elif pin_name == "KEY3":
+                show_top_stories()
         elif menu_instance.current_screen == "button_game":
             if pin_name in BUTTON_NAMES:
                 handle_game_input(pin_name)
@@ -334,6 +358,97 @@ def run_program2():
     time.sleep(2)
     menu_instance.display_message_screen("Program 2", "Done!", delay=1.5)
     menu_instance.clear_display()
+
+
+def show_top_stories():
+    """Fetch and display NYT top stories in a selectable menu."""
+    stop_scrolling()
+    global nyt_stories
+    try:
+        resp = requests.get(
+            f"https://api.nytimes.com/svc/topstories/v2/home.json?api-key={NYT_API_KEY}",
+            timeout=5,
+        )
+        data = resp.json()
+        nyt_stories = data.get("results", [])[:20]
+    except Exception:
+        nyt_stories = []
+
+    if not nyt_stories:
+        menu_instance.display_message_screen("NYT", "Failed to fetch stories", delay=3)
+        show_main_menu()
+        return
+
+    titles = []
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    for story in nyt_stories:
+        lines = wrap_text(story.get("title", ""), font_medium, DISPLAY_WIDTH - 10, dummy_draw)
+        titles.append(lines[0])
+
+    menu_instance.items = titles
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "nyt_list"
+    menu_instance.draw()
+
+
+def draw_story_detail(index):
+    """Display selected story with scrolling if needed."""
+    global scroll_thread, scroll_stop_event, current_story_index
+    stop_scrolling()
+    current_story_index = index
+    menu_instance.current_screen = "nyt_story"
+    story = nyt_stories[index]
+    header = "NYT Story"
+    text = f"{story.get('title','')}\n\n{story.get('abstract','')}"
+
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    max_width = DISPLAY_WIDTH - 10
+    lines = wrap_text(text, font_small, max_width, dummy_draw)
+    line_h = dummy_draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    available_h = DISPLAY_HEIGHT - 35
+    total_h = len(lines) * line_h
+
+    def render(offset=0):
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), header, font=font_large, fill=(255, 255, 0))
+        y = 25 - offset
+        for line in lines:
+            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+            y += line_h
+        draw.text((5, DISPLAY_HEIGHT - 10), "1=Open 3=Back", font=font_small, fill=(0, 255, 255))
+        device.display(img)
+
+    if total_h <= available_h:
+        render()
+    else:
+        def scroll_task():
+            off = 0
+            max_off = total_h - available_h
+            while not scroll_stop_event.is_set():
+                render(off)
+                off = 0 if off >= max_off else off + 1
+                time.sleep(0.2)
+
+        scroll_stop_event.clear()
+        scroll_thread = threading.Thread(target=scroll_task, daemon=True)
+        scroll_thread.start()
+
+
+def open_current_story():
+    """Open the currently displayed story URL in a browser."""
+    if not nyt_stories:
+        return
+    story = nyt_stories[current_story_index]
+    url = story.get("url")
+    if url:
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
 
 
 def show_wifi_networks():
@@ -690,6 +805,7 @@ def show_main_menu():
         "Launch Codes",
         "System Monitor",
         "Network Info",
+        "Top Stories",
         "Date & Time",
         "Show Info",
         "Settings",
@@ -726,6 +842,8 @@ def handle_menu_selection(selection):
         run_system_monitor()
     elif selection == "Network Info":
         show_network_info()
+    elif selection == "Top Stories":
+        show_top_stories()
     elif selection == "Date & Time":
         show_date_time()
     elif selection == "Show Info":
