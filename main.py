@@ -295,6 +295,15 @@ def button_event_handler(channel):
                     connect_to_wifi(selection)
             elif pin_name == "KEY1":
                 show_settings_menu()
+        elif menu_instance.current_screen == "games":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_games_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_main_menu()
         elif menu_instance.current_screen == "nyt_headline":
             if pin_name == "JOY_UP" and current_story_index > 0:
                 draw_headline(current_story_index - 1)
@@ -993,14 +1002,33 @@ def show_settings_menu():
     menu_instance.draw()
 
 
+def show_games_menu():
+    stop_scrolling()
+    menu_instance.max_visible_items = 6
+    menu_instance.items = ["Button Game", "Launch Codes", "Back"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "games"
+    menu_instance.draw()
+
+
+def handle_games_selection(selection):
+    if selection == "Button Game":
+        start_button_game()
+        return
+    elif selection == "Launch Codes":
+        start_launch_codes()
+        return
+    elif selection == "Back":
+        show_main_menu()
+
+
 def show_main_menu():
     stop_scrolling()
     menu_instance.max_visible_items = 6
     menu_instance.items = [
-        "Update Mini-OS",
         "Update and Restart",
-        "Button Game",
-        "Launch Codes",
+        "Games",
         "Typer",
         "Image Gallery",
         "System Monitor",
@@ -1011,7 +1039,6 @@ def show_main_menu():
         "Settings",
         "Shutdown",
         "Reboot",
-        "Soft Reboot",
     ]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
@@ -1030,16 +1057,10 @@ def handle_settings_selection(selection):
 
 def handle_menu_selection(selection):
     print(f"Selected: {selection}") # This output goes to journalctl
-    if selection == "Update Mini-OS":
-        run_git_pull()
-    elif selection == "Update and Restart":
+    if selection == "Update and Restart":
         update_and_restart()
-    elif selection == "Button Game":
-        start_button_game()
-        return
-    elif selection == "Launch Codes":
-        start_launch_codes()
-        return
+    elif selection == "Games":
+        show_games_menu()
     elif selection == "Typer":
         start_typer()
     elif selection == "Image Gallery":
@@ -1073,12 +1094,6 @@ def handle_menu_selection(selection):
         # Perform actual reboot. Needs proper permissions similar to shutdown.
         subprocess.run(["sudo", "reboot"], check=True)
         exit()  # Exit as the system is rebooting
-    elif selection == "Soft Reboot":
-        menu_instance.display_message_screen("System", "Restarting Mini-OS...", delay=2)
-        print("Restarting mini_os.service via systemctl restart.")
-        # Restart only the service running this script
-        subprocess.run(["sudo", "systemctl", "restart", "mini_os.service"], check=True)
-        exit()
     
     # After any program finishes, redraw the menu
     menu_instance.draw()

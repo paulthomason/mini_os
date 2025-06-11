@@ -2,9 +2,9 @@
 
 This repository contains a simple menu-based interface for a Raspberry Pi with an ST7735-based LCD display.
 
-The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick. It also provides menu options to briefly display the current date and time, a simple system monitor showing CPU temperature, load and memory usage, and a network info screen showing the current IP address and Wi-Fi SSID. Shutdown, Reboot, and Soft Reboot options are available for safely powering off, restarting the Pi, or just restarting the Mini OS service. An "Update Mini-OS" entry pulls the latest code with `git pull`. A new "Update and Restart" option pulls the code and restarts the service so the update takes effect.
+The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick. It also provides menu options to briefly display the current date and time, a simple system monitor showing CPU temperature, load and memory usage, and a network info screen showing the current IP address and Wi-Fi SSID. Shutdown and Reboot options are available for safely powering off or restarting the Pi. An "Update and Restart" option pulls the latest code and restarts the service so the update takes effect.
 
-Two small games are included: a reaction-based **Button Game** and a memory challenge called **Launch Codes**. Both can be started from the main menu and make use of the three buttons and joystick directions for input.
+Two small games are included: a reaction-based **Button Game** and a memory challenge called **Launch Codes**. They can be started from the **Games** submenu and make use of the three buttons and joystick directions for input.
 
 An **Image Gallery** viewer is also included. Create an `images/` directory (the program will create it if missing) and place your 128x128 PNG or JPEG files there. When started from the menu you can flip through the pictures using the joystick left and right, and press the joystick in to return to the main menu.
 
