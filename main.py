@@ -167,6 +167,13 @@ irc_input_text = ""
 IRC_KEY_LAYOUTS = None  # defined after keyboard layouts
 irc_keyboard_state = 0
 
+# --- Scrollable Message ---
+message_lines = []
+message_line_h = 0
+message_offset = 0
+message_max_offset = 0
+message_render = None
+
 
 def wrap_text(text, font, max_width, draw):
     """Return a list of lines wrapped to fit within max_width."""
@@ -451,6 +458,13 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "image_gallery":
             if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
                 handle_gallery_input(pin_name)
+        elif menu_instance.current_screen == "scroll_message":
+            if pin_name == "JOY_UP":
+                scroll_message(-1)
+            elif pin_name == "JOY_DOWN":
+                scroll_message(1)
+            elif pin_name == "KEY3":
+                show_main_menu()
         elif menu_instance.current_screen == "irc_chat":
             handle_irc_chat_input(pin_name)
     else: # Button released
@@ -718,10 +732,60 @@ def toggle_wifi():
     try:
         status = subprocess.check_output(["nmcli", "radio", "wifi"]).decode().strip()
         new_state = "off" if status == "enabled" else "on"
-        subprocess.run(["nmcli", "radio", "wifi", new_state], check=True)
+        subprocess.run(
+            ["nmcli", "radio", "wifi", new_state],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         menu_instance.display_message_screen("Wi-Fi", f"Wi-Fi {new_state}", delay=2)
-    except Exception:
-        menu_instance.display_message_screen("Wi-Fi", "Toggle failed", delay=2)
+    except subprocess.CalledProcessError as e:
+        err = e.stderr.decode().strip() if e.stderr else str(e)
+        show_scroll_message("Wi-Fi Error", err or "Toggle failed")
+    except Exception as e:
+        show_scroll_message("Wi-Fi Error", str(e))
+
+
+def show_scroll_message(title, message):
+    """Display a scrollable message screen."""
+    global message_lines, message_line_h, message_offset, message_max_offset, message_render
+    stop_scrolling()
+    menu_instance.current_screen = "scroll_message"
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    max_width = DISPLAY_WIDTH - 10
+    message_lines = wrap_text(message, font_small, max_width, dummy_draw)
+    message_line_h = dummy_draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    message_offset = 0
+    available_h = DISPLAY_HEIGHT - 35
+    message_max_offset = max(0, len(message_lines) * message_line_h - available_h)
+
+    def render():
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), title, font=font_large, fill=(255, 255, 0))
+        y = 25 - message_offset
+        for line in message_lines:
+            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+            y += message_line_h
+        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+        thread_safe_display(img)
+
+    message_render = render
+    message_render()
+
+
+def scroll_message(direction):
+    """Scroll the current message up (-1) or down (1)."""
+    global message_offset
+    if not message_render:
+        return
+    message_offset += direction * message_line_h
+    if message_offset < 0:
+        message_offset = 0
+    if message_offset > message_max_offset:
+        message_offset = message_max_offset
+    message_render()
 
 # --- IRC Chat Functions ---
 
