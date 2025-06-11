@@ -9,6 +9,7 @@ import random
 import threading
 import requests
 import webbrowser
+import shutil
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -595,6 +596,20 @@ def run_system_monitor(duration=10):
         except Exception:
             load = 0.0
 
+        # Current CPU frequency in MHz
+        try:
+            with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq") as f:
+                cpu_freq = int(f.read().strip()) / 1000  # kHz -> MHz
+        except Exception:
+            cpu_freq = None
+
+        # Disk usage for root filesystem
+        try:
+            usage = shutil.disk_usage("/")
+            disk_str = f"{usage.used // (1024*1024)}/{usage.total // (1024*1024)}MB"
+        except Exception:
+            disk_str = "N/A"
+
         # Memory usage from /proc/meminfo
         mem_total = 0
         mem_available = 0
@@ -618,7 +633,12 @@ def run_system_monitor(duration=10):
         draw.text((5, 5), "System Monitor", font=font_large, fill=(255, 255, 0))
         draw.text((5, 25), f"Temp: {temp}C", font=font_medium, fill=(255, 255, 255))
         draw.text((5, 40), f"Load: {load:.2f}", font=font_medium, fill=(255, 255, 255))
-        draw.text((5, 55), f"Mem: {mem_str}", font=font_medium, fill=(255, 255, 255))
+        if cpu_freq is not None:
+            draw.text((5, 55), f"Freq: {cpu_freq:.0f}MHz", font=font_medium, fill=(255, 255, 255))
+        else:
+            draw.text((5, 55), "Freq: N/A", font=font_medium, fill=(255, 255, 255))
+        draw.text((5, 70), f"Mem: {mem_str}", font=font_medium, fill=(255, 255, 255))
+        draw.text((5, 85), f"Disk: {disk_str}", font=font_medium, fill=(255, 255, 255))
         thread_safe_display(img)
         time.sleep(1)
     menu_instance.clear_display()
