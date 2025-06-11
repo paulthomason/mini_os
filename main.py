@@ -712,6 +712,17 @@ def connect_to_wifi(ssid):
 
     show_wifi_networks()
 
+
+def toggle_wifi():
+    """Toggle the Wi-Fi radio state using nmcli."""
+    try:
+        status = subprocess.check_output(["nmcli", "radio", "wifi"]).decode().strip()
+        new_state = "off" if status == "enabled" else "on"
+        subprocess.run(["nmcli", "radio", "wifi", new_state], check=True)
+        menu_instance.display_message_screen("Wi-Fi", f"Wi-Fi {new_state}", delay=2)
+    except Exception:
+        menu_instance.display_message_screen("Wi-Fi", "Toggle failed", delay=2)
+
 # --- IRC Chat Functions ---
 
 def connect_irc():
@@ -1373,7 +1384,7 @@ def show_settings_menu():
     """Top-level settings menu."""
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
-    menu_instance.items = ["Display", "Wi-Fi Setup", "Back"]
+    menu_instance.items = ["Display", "Wi-Fi Setup", "Toggle Wi-Fi", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "settings"
@@ -1501,6 +1512,8 @@ def handle_settings_selection(selection):
         show_display_menu()
     elif selection == "Wi-Fi Setup":
         show_wifi_networks()
+    elif selection == "Toggle Wi-Fi":
+        toggle_wifi()
     elif selection == "Back":
         show_main_menu()
 
