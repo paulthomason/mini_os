@@ -1025,7 +1025,8 @@ def draw_brightness_screen():
 def show_settings_menu():
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
-    menu_instance.items = ["Brightness", "Wi-Fi Setup", "Back"]
+    # Include Shutdown as the last option in the Settings menu
+    menu_instance.items = ["Brightness", "Wi-Fi Setup", "Back", "Shutdown"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "settings"
@@ -1067,7 +1068,6 @@ def show_main_menu():
         "Date & Time",
         "Show Info",
         "Settings",
-        "Shutdown",
         "Reboot",
     ]
     menu_instance.selected_item = 0
@@ -1082,6 +1082,11 @@ def handle_settings_selection(selection):
         draw_brightness_screen()
     elif selection == "Wi-Fi Setup":
         show_wifi_networks()
+    elif selection == "Shutdown":
+        menu_instance.display_message_screen("System", "Shutting down...", delay=2)
+        print("Shutting down now via systemctl poweroff.")
+        subprocess.run(["sudo", "poweroff"], check=True)
+        exit()
     elif selection == "Back":
         show_main_menu()
 
