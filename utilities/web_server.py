@@ -5,6 +5,7 @@ import re
 import json
 import threading
 import importlib
+import subprocess
 from flask import Flask, request, redirect
 
 app = Flask(__name__)
@@ -15,6 +16,7 @@ os.makedirs(NOTES_DIR, exist_ok=True)
 
 NYT_API_KEY = None
 CHAT_LOG = []
+SHELL_HISTORY = []
 SERVER_RUNNING = False
 
 
@@ -36,6 +38,7 @@ def index():
         "<li><a href='/settings'>Settings</a></li>"
         "<li><a href='/notes'>Notes</a></li>"
         "<li><a href='/chat'>Chat</a></li>"
+        "<li><a href='/shell'>Shell</a></li>"
         "<li><a href='/top-stories'>Top Stories</a></li>"
         "</ul>"
     )
@@ -151,6 +154,34 @@ def chat():
     html.append("<form method='post'><input name='msg'><button type='submit'>Send</button></form>")
     for line in CHAT_LOG[-50:]:
         html.append(f"<div>{line}</div>")
+    html.append("<p><a href='/'>Back</a></p>")
+    return "\n".join(html)
+
+
+@app.route("/shell", methods=["GET", "POST"])
+def shell():
+    """Simple interactive shell."""
+    output = ""
+    if request.method == "POST":
+        cmd = request.form.get("cmd", "").strip()
+        if cmd:
+            try:
+                output = subprocess.check_output(
+                    cmd, shell=True, stderr=subprocess.STDOUT, timeout=10
+                ).decode()
+            except subprocess.CalledProcessError as e:
+                output = e.output.decode() if e.output else str(e)
+            except Exception as e:
+                output = str(e)
+            SHELL_HISTORY.append((cmd, output))
+        return redirect("/shell")
+
+    html = ["<h1>Shell</h1>"]
+    html.append(
+        "<form method='post'><input name='cmd'><button type='submit'>Run</button></form>"
+    )
+    for cmd, out in SHELL_HISTORY[-10:]:
+        html.append(f"<h3>$ {cmd}</h3><pre>{out}</pre>")
     html.append("<p><a href='/'>Back</a></p>")
     return "\n".join(html)
 
