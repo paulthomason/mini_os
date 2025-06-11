@@ -48,6 +48,7 @@ p_dir = 1
 running = False
 update_thread = None
 result_text = ""
+score = 0
 
 
 def init(display_func, fonts_tuple, quit_callback):
@@ -58,12 +59,13 @@ def init(display_func, fonts_tuple, quit_callback):
 
 
 def start():
-    global running, state, h_pos, v_pos, p_pos, h_dir, v_dir, p_dir, current_speed
+    global running, state, h_pos, v_pos, p_pos, h_dir, v_dir, p_dir, current_speed, score
     running = True
     state = STATE_AIM_H
     h_pos = v_pos = p_pos = 0.0
     h_dir = v_dir = p_dir = 1
     current_speed = BASE_SPEED
+    score = 0
     start_thread()
 
 
@@ -103,7 +105,7 @@ def handle_input(pin):
 
 
 def game_loop():
-    global h_pos, v_pos, p_pos, h_dir, v_dir, p_dir, state, result_text, axe_x, axe_y, current_speed
+    global h_pos, v_pos, p_pos, h_dir, v_dir, p_dir, state, result_text, axe_x, axe_y, current_speed, score
     last_time = time.time()
     while running:
         now = time.time()
@@ -135,7 +137,8 @@ def game_loop():
                 p_pos = 0
                 p_dir = 1
         elif state == STATE_THROW:
-            result_text, axe_x, axe_y = evaluate_throw()
+            result_text, points, axe_x, axe_y = evaluate_throw()
+            score += points
             animate_throw(axe_x, axe_y)
             state = STATE_RESULT
         draw()
@@ -160,15 +163,20 @@ def evaluate_throw():
     dist = (dx * dx + dy * dy) ** 0.5
     if dist <= TARGET_RADIUS_INNER:
         text = "Bullseye! +10"
+        points = 10
     elif dist <= TARGET_RADIUS_MIDDLE:
         text = "Great! +7"
+        points = 7
     elif dist <= TARGET_RADIUS_OUTER:
         text = "On Target +5"
+        points = 5
     elif dist <= TARGET_RADIUS_OUTERMOST:
         text = "Close +3"
+        points = 3
     else:
         text = "Miss"
-    return text, int(target_x), int(target_y)
+        points = 0
+    return text, points, int(target_x), int(target_y)
 
 
 def animate_throw(tx, ty):
@@ -192,6 +200,7 @@ def draw_axe(d, x, y):
 def draw():
     img = Image.new("RGB", (SCREEN_W, SCREEN_H), "white")
     d = ImageDraw.Draw(img)
+    d.text((5, 5), f"Score: {score}", font=fonts[0], fill="black")
     tx = SCREEN_W // 2
     ty = SCREEN_H // 2
 
