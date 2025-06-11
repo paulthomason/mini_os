@@ -844,7 +844,7 @@ def draw_irc_input_screen():
             ty = y + (row_h - (bbox[3] - bbox[1])) // 2
             draw.text((tx, ty), ch, font=font_small, fill=text_color)
 
-    tips = "1=Delete 2=Shift 3=Cancel"
+    tips = "Press=Send 1=Select 2=Shift 3=Cancel"
     draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips, font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
@@ -904,7 +904,7 @@ def handle_irc_chat_input(pin_name):
             draw_chat_screen()
             return
         elif pin_name == "KEY1":
-            irc_input_text = irc_input_text[:-1]
+            irc_input_text += IRC_KEY_LAYOUT[typer_row][typer_col]
         elif pin_name == "KEY2":
             irc_keyboard_state = (irc_keyboard_state + 1) % len(IRC_KEY_LAYOUTS)
             IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
