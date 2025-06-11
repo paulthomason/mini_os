@@ -96,6 +96,10 @@ except IOError:
 brightness_level = 100  # Percentage 0-100
 backlight_pwm = None
 
+# Gallery state
+gallery_images = []
+gallery_index = 0
+
 
 def wrap_text(text, font, max_width, draw):
     """Return a list of lines wrapped to fit within max_width."""
@@ -269,6 +273,16 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "launch_codes":
             if pin_name in BUTTON_PINS:
                 handle_launch_input(pin_name)
+        elif menu_instance.current_screen == "gallery":
+            if pin_name == "JOY_LEFT":
+                global gallery_index
+                gallery_index = (gallery_index - 1) % len(gallery_images)
+                show_gallery_image()
+            elif pin_name == "JOY_RIGHT":
+                gallery_index = (gallery_index + 1) % len(gallery_images)
+                show_gallery_image()
+            elif pin_name == "JOY_PRESS":
+                show_main_menu()
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -334,6 +348,43 @@ def run_program2():
     time.sleep(2)
     menu_instance.display_message_screen("Program 2", "Done!", delay=1.5)
     menu_instance.clear_display()
+
+
+def start_gallery():
+    """Initialize and show the image gallery."""
+    global gallery_images, gallery_index
+    stop_scrolling()
+    images_dir = os.path.join(os.path.dirname(__file__), "images")
+    try:
+        gallery_images = sorted(
+            [f for f in os.listdir(images_dir) if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp"))]
+        )
+    except FileNotFoundError:
+        gallery_images = []
+
+    if not gallery_images:
+        menu_instance.display_message_screen("Gallery", "No images found", delay=3)
+        show_main_menu()
+        return
+
+    gallery_index = 0
+    menu_instance.current_screen = "gallery"
+    show_gallery_image()
+
+
+def show_gallery_image():
+    """Display the current image in the gallery."""
+    if not gallery_images:
+        return
+    img_path = os.path.join(os.path.dirname(__file__), "images", gallery_images[gallery_index])
+    try:
+        img = Image.open(img_path).convert("RGB")
+        if img.size != (DISPLAY_WIDTH, DISPLAY_HEIGHT):
+            img = img.resize((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        device.display(img)
+    except Exception:
+        menu_instance.display_message_screen("Gallery", "Error loading image", delay=2)
+        show_main_menu()
 
 
 def show_wifi_networks():
@@ -686,6 +737,7 @@ def show_main_menu():
     menu_instance.items = [
         "Run Program 1",
         "Run Program 2",
+        "Gallery",
         "Button Game",
         "Launch Codes",
         "System Monitor",
@@ -716,6 +768,9 @@ def handle_menu_selection(selection):
         run_program1()
     elif selection == "Run Program 2":
         run_program2()
+    elif selection == "Gallery":
+        start_gallery()
+        return
     elif selection == "Button Game":
         start_button_game()
         return
