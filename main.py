@@ -473,6 +473,16 @@ def button_event_handler(channel):
                 scroll_note(-1)
             elif pin_name == "JOY_DOWN":
                 scroll_note(1)
+            elif pin_name == "KEY1":
+                if current_note_file:
+                    try:
+                        with open(os.path.join(NOTES_DIR, current_note_file), "r") as f:
+                            text = f.read()
+                    except Exception:
+                        text = ""
+                    start_notes(text, current_note_file)
+            elif pin_name == "KEY2":
+                delete_current_note()
             elif pin_name == "KEY3":
                 show_notes_list()
         elif menu_instance.current_screen == "nyt_headline":
@@ -1456,6 +1466,8 @@ note_line_h = 0
 note_offset = 0
 note_max_offset = 0
 note_render = None
+current_note_file = None  # filename of the note being viewed
+editing_note_filename = None  # filename when editing an existing note
 
 
 def draw_notes_screen():
@@ -1508,11 +1520,12 @@ def draw_notes_screen():
     thread_safe_display(img)
 
 
-def start_notes():
-    """Initialize the Notes program."""
-    global notes_text, typer_row, typer_col, keyboard_state, KEY_LAYOUT, notes_auto_lower
+def start_notes(text="", filename=None):
+    """Initialize the Notes program. Optionally preload text for editing."""
+    global notes_text, typer_row, typer_col, keyboard_state, KEY_LAYOUT, notes_auto_lower, editing_note_filename
     stop_scrolling()
-    notes_text = ""
+    notes_text = text
+    editing_note_filename = filename
     typer_row = 1
     typer_col = 0
     keyboard_state = 0
@@ -1525,7 +1538,7 @@ def start_notes():
 
 def handle_notes_input(pin_name):
     """Handle joystick and button input for Notes."""
-    global typer_row, typer_col, notes_text, keyboard_state, KEY_LAYOUT, notes_auto_lower
+    global typer_row, typer_col, notes_text, keyboard_state, KEY_LAYOUT, notes_auto_lower, editing_note_filename
     if pin_name == "JOY_LEFT" and typer_col > 0:
         typer_col -= 1
     elif pin_name == "JOY_RIGHT" and typer_col < len(KEY_LAYOUT[typer_row]) - 1:
@@ -1554,28 +1567,33 @@ def handle_notes_input(pin_name):
     elif pin_name == "KEY2":
         notes_text = notes_text[:-1]
     elif pin_name == "KEY3":
-        save_note(notes_text)
+        save_note(notes_text, editing_note_filename)
+        editing_note_filename = None
         show_main_menu()
         return
     draw_notes_screen()
 
 
-def save_note(text):
-    """Save the given text to the next note file."""
+def save_note(text, filename=None):
+    """Save the given text to a file. If filename is None create a new note."""
     if not text:
         return
-    pattern = re.compile(r"note(\d+)\.txt")
-    existing = [int(m.group(1)) for m in (pattern.match(f) for f in os.listdir(NOTES_DIR)) if m]
-    next_num = max(existing, default=0) + 1
-    filename = os.path.join(NOTES_DIR, f"note{next_num}.txt")
-    with open(filename, "w") as f:
+    if filename:
+        path = os.path.join(NOTES_DIR, filename)
+    else:
+        pattern = re.compile(r"note(\d+)\.txt")
+        existing = [int(m.group(1)) for m in (pattern.match(f) for f in os.listdir(NOTES_DIR)) if m]
+        next_num = max(existing, default=0) + 1
+        path = os.path.join(NOTES_DIR, f"note{next_num}.txt")
+    with open(path, "w") as f:
         f.write(text)
 
 
 def show_notes_list():
     """Display a menu of saved notes."""
     stop_scrolling()
-    global notes_files
+    global notes_files, current_note_file
+    current_note_file = None
     try:
         notes_files = sorted(
             f for f in os.listdir(NOTES_DIR) if f.lower().endswith(".txt")
@@ -1596,9 +1614,10 @@ def show_notes_list():
 
 def view_note(filename):
     """Show the contents of a single note with scrolling."""
-    global note_lines, note_line_h, note_offset, note_max_offset, note_render
+    global note_lines, note_line_h, note_offset, note_max_offset, note_render, current_note_file
     stop_scrolling()
     menu_instance.current_screen = "note_view"
+    current_note_file = filename
     path = os.path.join(NOTES_DIR, filename)
     try:
         with open(path, "r") as f:
@@ -1623,7 +1642,7 @@ def view_note(filename):
         for line in note_lines:
             draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
             y += note_line_h
-        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+        draw.text((5, DISPLAY_HEIGHT - 10), "1=Edit 2=Delete 3=Back", font=font_small, fill=(0, 255, 255))
         thread_safe_display(img)
 
     note_render = render
@@ -1640,6 +1659,19 @@ def scroll_note(direction):
     if note_offset > note_max_offset:
         note_offset = note_max_offset
     note_render()
+
+
+def delete_current_note():
+    """Delete the note currently being viewed and return to the list."""
+    global current_note_file
+    if not current_note_file:
+        return
+    try:
+        os.remove(os.path.join(NOTES_DIR, current_note_file))
+    except Exception:
+        pass
+    current_note_file = None
+    show_notes_list()
 
 def update_backlight():
     if backlight_pwm:
