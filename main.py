@@ -111,16 +111,23 @@ class Menu:
 
         y_offset = 25
         for i, item in enumerate(self.items):
-            text_color = (255, 255, 255) # White
+            text_color = (255, 255, 255)  # White
+
+            # Determine text size using textbbox (compatible with newer Pillow versions)
+            bbox = draw.textbbox((0, 0), item, font=self.font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+
             if i == self.selected_item:
-                text_color = (0, 255, 0) # Green for selected item
+                text_color = (0, 255, 0)  # Green for selected item
                 # Draw a selection rectangle
-                text_width, text_height = draw.textsize(item, font=self.font)
-                draw.rectangle([(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + text_height + 2)], 
-                               fill=(50, 50, 50)) # Dark gray background for selection
-            
+                draw.rectangle(
+                    [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + text_height + 2)],
+                    fill=(50, 50, 50),
+                )  # Dark gray background for selection
+
             draw.text((5, y_offset), item, font=self.font, fill=text_color)
-            y_offset += self.font.getsize(item)[1] + 3 # Line spacing based on font height
+            y_offset += text_height + 3  # Line spacing based on font height
 
         device.display(img) # Send the PIL image to the display
 
