@@ -8,6 +8,8 @@ Two small games are included: a reaction-based **Button Game** and a memory chal
 
 An **Image Gallery** viewer is also included. Create an `images/` directory (the program will create it if missing) and place your 128x128 PNG or JPEG files there. When started from the menu you can flip through the pictures using the joystick left and right, and press the joystick in to return to the main menu.
 
+The **Typer** program provides an onscreen keyboard for entering text. Use the joystick to move the highlight and press it to select a key. Press **KEY1** to cycle between uppercase, lowercase and punctuation layouts. **KEY2** deletes the last character and **KEY3** exits the program. A long space bar is available on the bottom row and is selected just like any other key.
+
 ## Setup on Raspberry Pi OS Lite (32-bit)
 
 Install the required packages and enable the SPI interface:
