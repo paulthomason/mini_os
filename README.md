@@ -61,3 +61,10 @@ The service definition will start the program on boot and restart it automatical
 ## NYT Top Stories
 
 The menu can fetch headlines from the New York Times API. Copy `nyt_config.py.example` to `nyt_config.py` and add your API key. The file is in `.gitignore` so your key stays local.
+
+## Web Interface
+
+A lightweight web server can be started from the **Utilities** menu. It exposes
+a simple browser based interface for viewing and updating settings. From the
+`/settings` page you can change the display brightness, select a font and adjust
+the text size. Wi-Fi can also be toggled on or off directly from the browser.

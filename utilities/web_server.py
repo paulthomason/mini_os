@@ -3,6 +3,8 @@
 import os
 import re
 import json
+import threading
+import importlib
 from flask import Flask, request, redirect
 
 app = Flask(__name__)
@@ -39,19 +41,72 @@ def index():
     )
 
 
-@app.route("/settings")
+@app.route("/settings", methods=["GET", "POST"])
 def settings():
-    # Basic settings information only
-    brightness = globals().get("brightness_level", "N/A")
-    font = globals().get("current_font_name", "N/A")
-    text_size = globals().get("current_text_size", "N/A")
-    return (
-        f"<h1>Settings</h1>"
-        f"<p>Brightness: {brightness}%</p>"
-        f"<p>Font: {font}</p>"
-        f"<p>Text Size: {text_size}</p>"
-        "<p><a href='/'>Back</a></p>"
+    """Display and modify Mini OS settings."""
+    main = importlib.import_module("__main__")
+
+    if request.method == "POST":
+        b = request.form.get("brightness")
+        if b is not None and b != "":
+            try:
+                val = max(0, min(100, int(b)))
+                if hasattr(main, "brightness_level"):
+                    main.brightness_level = val
+                    if hasattr(main, "update_backlight"):
+                        main.update_backlight()
+            except ValueError:
+                pass
+
+        font = request.form.get("font")
+        if font and hasattr(main, "AVAILABLE_FONTS") and font in main.AVAILABLE_FONTS:
+            main.current_font_name = font
+            if hasattr(main, "update_fonts"):
+                main.update_fonts()
+
+        size = request.form.get("text_size")
+        if size and hasattr(main, "TEXT_SIZE_MAP") and size in main.TEXT_SIZE_MAP:
+            main.current_text_size = size
+            if hasattr(main, "update_fonts"):
+                main.update_fonts()
+
+        return redirect("/settings")
+
+    brightness = getattr(main, "brightness_level", "N/A")
+    font = getattr(main, "current_font_name", "N/A")
+    text_size = getattr(main, "current_text_size", "N/A")
+    fonts = getattr(main, "AVAILABLE_FONTS", {}).keys()
+    sizes = getattr(main, "TEXT_SIZE_MAP", {}).keys()
+
+    html = ["<h1>Settings</h1>", "<form method='post'>"]
+    html.append(
+        f"Brightness: <input type='number' name='brightness' min='0' max='100' value='{brightness}'><br>"
     )
+    html.append("Font: <select name='font'>")
+    for f in fonts:
+        sel = "selected" if f == font else ""
+        html.append(f"<option value='{f}' {sel}>{f}</option>")
+    html.append("</select><br>")
+    html.append("Text Size: <select name='text_size'>")
+    for s in sizes:
+        sel = "selected" if s == text_size else ""
+        html.append(f"<option value='{s}' {sel}>{s}</option>")
+    html.append("</select><br>")
+    html.append("<button type='submit'>Save</button></form>")
+    html.append(
+        "<form method='post' action='/toggle-wifi'><button type='submit'>Toggle Wi-Fi</button></form>"
+    )
+    html.append("<p><a href='/'>Back</a></p>")
+    return "\n".join(html)
+
+
+@app.route("/toggle-wifi", methods=["POST"])
+def toggle_wifi_route():
+    """Toggle Wi-Fi radio using main module helper."""
+    main = importlib.import_module("__main__")
+    if hasattr(main, "toggle_wifi"):
+        threading.Thread(target=main.toggle_wifi).start()
+    return redirect("/settings")
 
 
 @app.route("/notes", methods=["GET", "POST"])
