@@ -316,6 +316,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "launch_codes":
             if pin_name in BUTTON_PINS:
                 handle_launch_input(pin_name)
+        elif menu_instance.current_screen == "typer":
+            if pin_name in BUTTON_PINS:
+                handle_typer_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -763,6 +766,95 @@ def handle_launch_input(pin_name):
             return
     draw_launch_code()
 
+# --- Typer Program ---
+
+typer_text = ""
+typer_row = 1  # Start with the A row
+typer_col = 0  # Column for A
+
+KEY_LAYOUT = [
+    list("QWERTYUIOP"),
+    list("ASDFGHJKL"),
+    list("ZXCVBNM"),
+]
+
+
+def draw_typer_screen():
+    """Render the current text and onscreen keyboard."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+
+    # Draw typed text in the top half
+    max_width = DISPLAY_WIDTH - 10
+    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
+    lines = wrap_text(typer_text, font_medium, max_width, draw)
+    max_lines = (DISPLAY_HEIGHT // 2 - 10) // line_h
+    start = max(0, len(lines) - max_lines)
+    y = 5
+    for line in lines[start:]:
+        draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+        y += line_h
+
+    # Keyboard layout in bottom half
+    kb_y = DISPLAY_HEIGHT // 2
+    row_h = (DISPLAY_HEIGHT - kb_y) // len(KEY_LAYOUT)
+    key_w = DISPLAY_WIDTH // 10
+    for r, row in enumerate(KEY_LAYOUT):
+        offset_x = (DISPLAY_WIDTH - len(row) * key_w) // 2
+        for c, ch in enumerate(row):
+            x = offset_x + c * key_w
+            y = kb_y + r * row_h
+            rect = (x + 1, y + 1, x + key_w - 2, y + row_h - 2)
+            if r == typer_row and c == typer_col:
+                draw.rectangle(rect, fill=(0, 255, 0))
+                text_color = (0, 0, 0)
+            else:
+                draw.rectangle(rect, outline=(255, 255, 255))
+                text_color = (255, 255, 255)
+            bbox = draw.textbbox((0, 0), ch, font=font_small)
+            tx = x + (key_w - (bbox[2] - bbox[0])) // 2
+            ty = y + (row_h - (bbox[3] - bbox[1])) // 2
+            draw.text((tx, ty), ch, font=font_small, fill=text_color)
+
+    draw.text((5, DISPLAY_HEIGHT - 10), "1=Space 2=Back 3=Exit", font=font_small, fill=(0, 255, 255))
+    thread_safe_display(img)
+
+
+def start_typer():
+    """Initialize the Typer program."""
+    global typer_text, typer_row, typer_col
+    stop_scrolling()
+    typer_text = ""
+    typer_row = 1
+    typer_col = 0
+    menu_instance.current_screen = "typer"
+    draw_typer_screen()
+
+
+def handle_typer_input(pin_name):
+    """Handle joystick and button input for Typer."""
+    global typer_row, typer_col, typer_text
+    if pin_name == "JOY_LEFT" and typer_col > 0:
+        typer_col -= 1
+    elif pin_name == "JOY_RIGHT" and typer_col < len(KEY_LAYOUT[typer_row]) - 1:
+        typer_col += 1
+    elif pin_name == "JOY_UP" and typer_row > 0:
+        typer_row -= 1
+        typer_col = min(typer_col, len(KEY_LAYOUT[typer_row]) - 1)
+    elif pin_name == "JOY_DOWN" and typer_row < len(KEY_LAYOUT) - 1:
+        typer_row += 1
+        typer_col = min(typer_col, len(KEY_LAYOUT[typer_row]) - 1)
+    elif pin_name == "JOY_PRESS":
+        typer_text += KEY_LAYOUT[typer_row][typer_col]
+    elif pin_name == "KEY1":
+        typer_text += " "
+    elif pin_name == "KEY2":
+        typer_text = typer_text[:-1]
+    elif pin_name == "KEY3":
+        show_main_menu()
+        return
+    draw_typer_screen()
+
 def update_backlight():
     if backlight_pwm:
         backlight_pwm.ChangeDutyCycle(brightness_level)
@@ -796,6 +888,7 @@ def show_main_menu():
         "Update Mini-OS",
         "Button Game",
         "Launch Codes",
+        "Typer",
         "System Monitor",
         "Network Info",
         "Top Stories",
@@ -829,6 +922,9 @@ def handle_menu_selection(selection):
         return
     elif selection == "Launch Codes":
         start_launch_codes()
+        return
+    elif selection == "Typer":
+        start_typer()
         return
     elif selection == "System Monitor":
         run_system_monitor()
