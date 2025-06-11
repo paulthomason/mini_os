@@ -152,6 +152,15 @@ def wrap_text(text, font, max_width, draw):
     return lines
 
 
+def compute_max_visible_items(font):
+    """Return the number of menu items that fit on the screen with the given font."""
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    line_height = dummy_draw.textbbox((0, 0), "Ag", font=font)[3]
+    available_height = DISPLAY_HEIGHT - 25  # Header height + initial offset
+    return max(1, available_height // (line_height + 4))
+
+
 # --- Menu System ---
 class Menu:
     def __init__(self, items, font=font_medium):
@@ -160,8 +169,8 @@ class Menu:
         self.font = font
         self.current_screen = "main_menu"  # Tracks which menu/screen is active
         self.view_start = 0  # First visible item index
-        # Maximum number of items that fit on the screen
-        self.max_visible_items = 6
+        # Calculate how many items actually fit on the screen for the given font
+        self.max_visible_items = compute_max_visible_items(self.font)
 
     def draw(self):
         # Create a new blank image with black background
@@ -995,7 +1004,7 @@ def draw_brightness_screen():
 
 def show_settings_menu():
     stop_scrolling()
-    menu_instance.max_visible_items = 6
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.items = ["Brightness", "Wi-Fi Setup", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
@@ -1005,7 +1014,7 @@ def show_settings_menu():
 
 def show_games_menu():
     stop_scrolling()
-    menu_instance.max_visible_items = 6
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.items = ["Button Game", "Launch Codes", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
@@ -1026,7 +1035,7 @@ def handle_games_selection(selection):
 
 def show_main_menu():
     stop_scrolling()
-    menu_instance.max_visible_items = 6
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.items = [
         "Update and Restart",
         "Games",
