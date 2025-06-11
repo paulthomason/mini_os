@@ -92,22 +92,40 @@ timer_stop_event = threading.Event()
 timer_end_time = 0
 
 # --- Fonts ---
-# Use DejaVu Sans which is highly legible on small displays.
-try:
-    font_small = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11
-    )
-    font_medium = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 13
-    )
-    font_large = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 15
-    )
-except IOError:
-    print("Defaulting to PIL built-in font as custom font not found.")
-    font_small = ImageFont.load_default()
-    font_medium = ImageFont.load_default()
-    font_large = ImageFont.load_default()
+# Support choosing different fonts and text sizes.
+AVAILABLE_FONTS = {
+    "DejaVu Sans": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "DejaVu Serif": "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    "DejaVu Sans Mono": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+}
+
+TEXT_SIZE_MAP = {
+    "Small": (9, 11, 13),
+    "Medium": (11, 13, 15),
+    "Large": (13, 15, 18),
+}
+
+current_font_name = "DejaVu Sans"
+current_text_size = "Medium"
+
+
+def update_fonts():
+    """Reload fonts based on the selected font and size."""
+    global font_small, font_medium, font_large
+    sizes = TEXT_SIZE_MAP.get(current_text_size, TEXT_SIZE_MAP["Medium"])
+    font_path = AVAILABLE_FONTS.get(current_font_name, list(AVAILABLE_FONTS.values())[0])
+    try:
+        font_small = ImageFont.truetype(font_path, sizes[0])
+        font_medium = ImageFont.truetype(font_path, sizes[1])
+        font_large = ImageFont.truetype(font_path, sizes[2])
+    except IOError:
+        print("Defaulting to built-in fonts.")
+        font_small = ImageFont.load_default()
+        font_medium = ImageFont.load_default()
+        font_large = ImageFont.load_default()
+
+
+update_fonts()
 
 # --- Backlight Control ---
 brightness_level = 100  # Percentage 0-100
@@ -174,6 +192,10 @@ class Menu:
         self.max_visible_items = compute_max_visible_items(self.font)
 
     def draw(self):
+        if self.current_screen == "font_menu":
+            self.draw_font_menu()
+            return
+
         # Create a new blank image with black background
         img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
         draw = ImageDraw.Draw(img)
@@ -203,6 +225,39 @@ class Menu:
             y_offset += line_height + 4  # Consistent line spacing
 
         thread_safe_display(img) # Send the PIL image to the display
+
+    def draw_font_menu(self):
+        """Draw font selection menu with sample text."""
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 2), "Select Font", font=font_large, fill=(0, 255, 255))
+        draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255))
+
+        y_offset = 25
+        line_height = draw.textbbox((0, 0), "Ag", font=self.font)[3]
+        visible_items = self.items[self.view_start:self.view_start + self.max_visible_items]
+        for idx, name in enumerate(visible_items):
+            i = self.view_start + idx
+            sample_font = self.font
+            if name in AVAILABLE_FONTS:
+                try:
+                    sample_font = ImageFont.truetype(
+                        AVAILABLE_FONTS[name],
+                        TEXT_SIZE_MAP.get(current_text_size, TEXT_SIZE_MAP["Medium"])[1],
+                    )
+                except IOError:
+                    sample_font = self.font
+            text_color = (0, 255, 0) if i == self.selected_item else (255, 255, 255)
+            if i == self.selected_item:
+                draw.rectangle(
+                    [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + line_height + 2)],
+                    fill=(50, 50, 50),
+                )
+            text = f"{name}: The quick brown fox"
+            draw.text((5, y_offset), text, font=sample_font, fill=text_color)
+            y_offset += line_height + 4
+
+        thread_safe_display(img)
 
     def navigate(self, direction):
         if direction == "up":
@@ -281,6 +336,15 @@ def button_event_handler(channel):
                 handle_settings_selection(menu_instance.get_selected_item())
             elif pin_name == "KEY1":
                 show_main_menu()
+        elif menu_instance.current_screen == "display_settings":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_display_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_settings_menu()
         elif menu_instance.current_screen == "brightness":
             global brightness_level
             if pin_name == "JOY_LEFT" and brightness_level > 0:
@@ -292,7 +356,25 @@ def button_event_handler(channel):
                 update_backlight()
                 draw_brightness_screen()
             elif pin_name == "JOY_PRESS" or pin_name == "KEY1":
-                show_settings_menu()
+                show_display_menu()
+        elif menu_instance.current_screen == "font_menu":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_font_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_display_menu()
+        elif menu_instance.current_screen == "text_size_menu":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_text_size_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_display_menu()
         elif menu_instance.current_screen == "wifi_list":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -1023,13 +1105,85 @@ def draw_brightness_screen():
 
 
 def show_settings_menu():
+    """Top-level settings menu."""
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
-    menu_instance.items = ["Brightness", "Wi-Fi Setup", "Back"]
+    menu_instance.items = ["Display", "Wi-Fi Setup", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "settings"
     menu_instance.draw()
+
+
+def show_display_menu():
+    """Display settings submenu."""
+    stop_scrolling()
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.items = ["Brightness", "Font", "Text Size", "Back"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "display_settings"
+    menu_instance.draw()
+
+
+def show_font_menu():
+    """List available fonts with a sample line."""
+    stop_scrolling()
+    menu_instance.items = list(AVAILABLE_FONTS.keys()) + ["Back"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.current_screen = "font_menu"
+    menu_instance.draw()
+
+
+def show_text_size_menu():
+    """Allow the user to select the text size."""
+    stop_scrolling()
+    menu_instance.items = list(TEXT_SIZE_MAP.keys()) + ["Back"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.current_screen = "text_size_menu"
+    menu_instance.draw()
+
+
+def handle_display_selection(selection):
+    if selection == "Brightness":
+        menu_instance.current_screen = "brightness"
+        draw_brightness_screen()
+    elif selection == "Font":
+        show_font_menu()
+    elif selection == "Text Size":
+        show_text_size_menu()
+    elif selection == "Back":
+        show_settings_menu()
+
+
+def handle_font_selection(selection):
+    global current_font_name
+    if selection == "Back":
+        show_display_menu()
+        return
+    current_font_name = selection
+    update_fonts()
+    menu_instance.font = font_medium
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.display_message_screen("Font", f"{selection} selected", delay=2)
+    show_display_menu()
+
+
+def handle_text_size_selection(selection):
+    global current_text_size
+    if selection == "Back":
+        show_display_menu()
+        return
+    current_text_size = selection
+    update_fonts()
+    menu_instance.font = font_medium
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.display_message_screen("Text Size", f"{selection} selected", delay=2)
+    show_display_menu()
 
 
 def show_games_menu():
@@ -1077,9 +1231,8 @@ def show_main_menu():
 
 
 def handle_settings_selection(selection):
-    if selection == "Brightness":
-        menu_instance.current_screen = "brightness"
-        draw_brightness_screen()
+    if selection == "Display":
+        show_display_menu()
     elif selection == "Wi-Fi Setup":
         show_wifi_networks()
     elif selection == "Back":
