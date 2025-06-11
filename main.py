@@ -118,6 +118,12 @@ try:
 except Exception:
     NYT_API_KEY = "YOUR_API_KEY_HERE"
 
+# --- Image Gallery ---
+IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
+os.makedirs(IMAGES_DIR, exist_ok=True)
+gallery_images = []
+gallery_index = 0
+
 
 def wrap_text(text, font, max_width, draw):
     """Return a list of lines wrapped to fit within max_width."""
@@ -316,6 +322,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "launch_codes":
             if pin_name in BUTTON_PINS:
                 handle_launch_input(pin_name)
+        elif menu_instance.current_screen == "image_gallery":
+            if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
+                handle_gallery_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -347,6 +356,56 @@ def run_git_pull():
     except subprocess.CalledProcessError:
         menu_instance.display_message_screen("Git Update", "Pull failed", delay=2)
     menu_instance.clear_display()
+
+
+def start_image_gallery():
+    """Load images from the images directory and display the first one."""
+    global gallery_images, gallery_index
+    stop_scrolling()
+    try:
+        gallery_images = [
+            f for f in sorted(os.listdir(IMAGES_DIR))
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif"))
+        ]
+    except Exception:
+        gallery_images = []
+
+    if not gallery_images:
+        menu_instance.display_message_screen("Gallery", "No images found", delay=3)
+        show_main_menu()
+        return
+
+    gallery_index = 0
+    menu_instance.current_screen = "image_gallery"
+    show_gallery_image()
+
+
+def show_gallery_image():
+    """Display the current image in the gallery."""
+    if not gallery_images:
+        return
+    path = os.path.join(IMAGES_DIR, gallery_images[gallery_index])
+    try:
+        img = Image.open(path).convert("RGB")
+        img = img.resize((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    except Exception:
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), "black")
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), "Load error", font=font_small, fill=(255, 0, 0))
+    thread_safe_display(img)
+
+
+def handle_gallery_input(pin_name):
+    """Navigate through images or exit back to the main menu."""
+    global gallery_index
+    if pin_name == "JOY_LEFT":
+        gallery_index = (gallery_index - 1) % len(gallery_images)
+        show_gallery_image()
+    elif pin_name == "JOY_RIGHT":
+        gallery_index = (gallery_index + 1) % len(gallery_images)
+        show_gallery_image()
+    elif pin_name == "JOY_PRESS":
+        show_main_menu()
 
 
 def show_top_stories():
@@ -796,6 +855,7 @@ def show_main_menu():
         "Update Mini-OS",
         "Button Game",
         "Launch Codes",
+        "Image Gallery",
         "System Monitor",
         "Network Info",
         "Top Stories",
@@ -829,6 +889,9 @@ def handle_menu_selection(selection):
         return
     elif selection == "Launch Codes":
         start_launch_codes()
+        return
+    elif selection == "Image Gallery":
+        start_image_gallery()
         return
     elif selection == "System Monitor":
         run_system_monitor()
