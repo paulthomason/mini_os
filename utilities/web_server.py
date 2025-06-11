@@ -169,6 +169,10 @@ def shell():
                 output = subprocess.check_output(
                     cmd, shell=True, stderr=subprocess.STDOUT, timeout=10
                 ).decode()
+            except subprocess.TimeoutExpired:
+                output = "Command timed out"
+                SHELL_HISTORY.append((cmd, output))
+                return output
             except subprocess.CalledProcessError as e:
                 output = e.output.decode() if e.output else str(e)
             except Exception as e:
