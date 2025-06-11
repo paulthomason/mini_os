@@ -1733,7 +1733,14 @@ def show_settings_menu():
     """Top-level settings menu."""
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
-    menu_instance.items = ["Display", "Wi-Fi Setup", "Toggle Wi-Fi", "Back"]
+    menu_instance.items = [
+        "Display",
+        "Wi-Fi Setup",
+        "Toggle Wi-Fi",
+        "Shutdown",
+        "Reboot",
+        "Back",
+    ]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "settings"
@@ -1889,8 +1896,6 @@ def show_main_menu():
         "Date & Time",
         "Show Info",
         "Settings",
-        "Shutdown",
-        "Reboot",
     ]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
@@ -1905,6 +1910,16 @@ def handle_settings_selection(selection):
         show_wifi_networks()
     elif selection == "Toggle Wi-Fi":
         toggle_wifi()
+    elif selection == "Shutdown":
+        menu_instance.display_message_screen("System", "Shutting down...", delay=2)
+        print("Shutting down now via systemctl poweroff.")
+        subprocess.run(["sudo", "poweroff"], check=True)
+        exit()
+    elif selection == "Reboot":
+        menu_instance.display_message_screen("System", "Rebooting...", delay=2)
+        print("Rebooting now via systemctl reboot.")
+        subprocess.run(["sudo", "reboot"], check=True)
+        exit()
     elif selection == "Back":
         show_main_menu()
 
@@ -1939,22 +1954,6 @@ def handle_menu_selection(selection):
         show_info()
     elif selection == "Settings":
         show_settings_menu()
-    elif selection == "Shutdown":
-        menu_instance.display_message_screen("System", "Shutting down...", delay=2)
-        print("Shutting down now via systemctl poweroff.")
-        # Perform actual shutdown. User running service needs permission for this.
-        # This typically means adding 'pi ALL=(ALL) NOPASSWD: /sbin/poweroff' to /etc/sudoers
-        # OR running the service as root (less secure, not recommended)
-        subprocess.run(["sudo", "poweroff"], check=True)
-        # If shutdown fails or doesn't happen fast enough, script might continue.
-        # For robustness, you might want to exit the script after the poweroff command.
-        exit() # Exit the Python script as OS is shutting down
-    elif selection == "Reboot":
-        menu_instance.display_message_screen("System", "Rebooting...", delay=2)
-        print("Rebooting now via systemctl reboot.")
-        # Perform actual reboot. Needs proper permissions similar to shutdown.
-        subprocess.run(["sudo", "reboot"], check=True)
-        exit()  # Exit as the system is rebooting
     
     # After any program finishes, redraw the menu
     menu_instance.draw()
