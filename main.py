@@ -333,6 +333,32 @@ def show_date_time(duration=10):
         time.sleep(1)
     menu_instance.clear_display()
 
+def show_network_info(duration=10):
+    """Display basic network information such as IP address and Wi-Fi SSID."""
+    try:
+        ip_output = subprocess.check_output(["hostname", "-I"]).decode().strip()
+        ip_addr = ip_output if ip_output else "N/A"
+    except Exception:
+        ip_addr = "N/A"
+
+    try:
+        ssid_output = subprocess.check_output(["iwgetid", "-r"]).decode().strip()
+        ssid = ssid_output if ssid_output else "N/A"
+    except Exception:
+        ssid = "N/A"
+
+    end_time = time.time() + duration
+    while time.time() < end_time:
+        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), "Network Info", font=font_large, fill=(255, 255, 0))
+        draw.text((5, 25), f"IP: {ip_addr}", font=font_small, fill=(255, 255, 255))
+        draw.text((5, 40), f"SSID: {ssid}", font=font_small, fill=(255, 255, 255))
+        device.display(img)
+        time.sleep(1)
+
+    menu_instance.clear_display()
+
 # --- Reaction Game ---
 
 def draw_game_screen(prompt):
@@ -404,6 +430,7 @@ def show_main_menu():
         "Run Program 2",
         "Button Game",
         "System Monitor",
+        "Network Info",
         "Date & Time",
         "Show Info",
         "Settings",
@@ -432,6 +459,8 @@ def handle_menu_selection(selection):
         return
     elif selection == "System Monitor":
         run_system_monitor()
+    elif selection == "Network Info":
+        show_network_info()
     elif selection == "Date & Time":
         show_date_time()
     elif selection == "Show Info":
