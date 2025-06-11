@@ -568,6 +568,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
                 handle_notes_input(pin_name)
+        elif menu_instance.current_screen == "novel_typer":
+            if pin_name in BUTTON_PINS:
+                handle_novel_typer_input(pin_name)
         elif menu_instance.current_screen == "shell":
             if pin_name in BUTTON_PINS:
                 handle_shell_input(pin_name)
@@ -1735,6 +1738,32 @@ KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
 IRC_KEY_LAYOUTS = [KEYBOARD_LOWER, KEYBOARD_UPPER, KEYBOARD_PUNCT]
 IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
 
+# --- Novel Typer ---
+# Groups of letters for each page. Each joystick direction selects a group and
+# repeated presses cycle through the letters in that group. KEY1 toggles pages,
+# KEY2 deletes the last character and KEY3 confirms the current letter or exits
+# when no group is active.
+NOVEL_GROUP_SETS = [
+    {
+        "JOY_UP": ["A", "B", "C"],
+        "JOY_DOWN": ["D", "E", "F"],
+        "JOY_LEFT": ["G", "H", "I"],
+        "JOY_RIGHT": ["J", "K", "L"],
+        "JOY_PRESS": ["M", "N", "O"],
+    },
+    {
+        "JOY_UP": ["P", "Q", "R"],
+        "JOY_DOWN": ["S", "T", "U"],
+        "JOY_LEFT": ["V", "W", "X"],
+        "JOY_RIGHT": ["Y", "Z", " "],
+        "JOY_PRESS": [".", "?", "!"],
+    },
+]
+novel_text = ""
+novel_page = 0
+novel_selected_group = None
+novel_group_index = 0
+
 # Note viewing state
 notes_files = []
 current_note_index = 0
@@ -1966,6 +1995,88 @@ def delete_current_note():
         pass
     current_note_file = None
     show_notes_list()
+
+
+# --- Novel Typer Program ---
+
+def draw_novel_typer_screen():
+    """Render typed text and the joystick letter groups."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+
+    max_width = DISPLAY_WIDTH - 10
+    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
+    lines = wrap_text(novel_text, font_medium, max_width, draw)
+    kb_y = DISPLAY_HEIGHT // 2
+    tips_height = 10
+    max_lines = (kb_y - 10) // line_h
+    start = max(0, len(lines) - max_lines)
+    y = 5
+    for line in lines[start:]:
+        draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+        y += line_h
+
+    group_map = NOVEL_GROUP_SETS[novel_page]
+    order = ["JOY_UP", "JOY_LEFT", "JOY_PRESS", "JOY_RIGHT", "JOY_DOWN"]
+    col_w = DISPLAY_WIDTH // 5
+    row_h = 10
+    start_y = kb_y + 2
+    for idx, g in enumerate(order):
+        letters = group_map[g]
+        x = idx * col_w + 2
+        rect = (x, start_y - 2, x + col_w - 4, DISPLAY_HEIGHT - tips_height - 2)
+        if novel_selected_group == g:
+            draw.rectangle(rect, outline=(0, 255, 0))
+        else:
+            draw.rectangle(rect, outline=(255, 255, 255))
+        for j, ch in enumerate(letters):
+            color = (0, 255, 0) if (novel_selected_group == g and j == novel_group_index) else (255, 255, 255)
+            ty = start_y + j * row_h
+            draw.text((x + 2, ty), ch, font=font_small, fill=color)
+
+    draw.text((5, DISPLAY_HEIGHT - tips_height + 1), "1=Pg 2=Del 3=OK/Exit", font=font_small, fill=(0, 255, 255))
+    draw.text((DISPLAY_WIDTH - 20, 2), f"P{novel_page+1}", font=font_small, fill=(0, 255, 255))
+
+    thread_safe_display(img)
+
+
+def start_novel_typer():
+    """Initialize the novel typer."""
+    global novel_text, novel_page, novel_selected_group, novel_group_index
+    stop_scrolling()
+    novel_text = ""
+    novel_page = 0
+    novel_selected_group = None
+    novel_group_index = 0
+    menu_instance.current_screen = "novel_typer"
+    draw_novel_typer_screen()
+
+
+def handle_novel_typer_input(pin_name):
+    """Process input for the novel typer."""
+    global novel_page, novel_selected_group, novel_group_index, novel_text
+    if pin_name in ["JOY_UP", "JOY_DOWN", "JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
+        if novel_selected_group == pin_name:
+            novel_group_index = (novel_group_index + 1) % len(NOVEL_GROUP_SETS[novel_page][pin_name])
+        else:
+            novel_selected_group = pin_name
+            novel_group_index = 0
+        draw_novel_typer_screen()
+    elif pin_name == "KEY1":
+        novel_page = (novel_page + 1) % len(NOVEL_GROUP_SETS)
+        draw_novel_typer_screen()
+    elif pin_name == "KEY2":
+        novel_text = novel_text[:-1]
+        draw_novel_typer_screen()
+    elif pin_name == "KEY3":
+        if novel_selected_group:
+            ch = NOVEL_GROUP_SETS[novel_page][novel_selected_group][novel_group_index]
+            novel_text += ch
+            novel_selected_group = None
+            novel_group_index = 0
+            draw_novel_typer_screen()
+        else:
+            show_main_menu()
 
 
 # --- Shell Program ---
@@ -2517,7 +2628,7 @@ def show_notes_menu():
     """Submenu for Notes with write/read options."""
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
-    menu_instance.items = ["Write Note", "Read Note"]
+    menu_instance.items = ["Novel Typer", "Write Note", "Read Note"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "notes_menu"
@@ -2525,7 +2636,10 @@ def show_notes_menu():
 
 
 def handle_notes_menu_selection(selection):
-    if selection == "Write Note":
+    if selection == "Novel Typer":
+        start_novel_typer()
+        return
+    elif selection == "Write Note":
         start_notes()
         return
     elif selection == "Read Note":
