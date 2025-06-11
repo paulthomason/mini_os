@@ -223,7 +223,7 @@ def button_event_handler(channel):
             elif pin_name == "JOY_PRESS":
                 handle_menu_selection(menu_instance.get_selected_item())
             elif pin_name == "KEY1":
-                if menu_instance.get_selected_item() != "Shutdown":
+                if menu_instance.get_selected_item() != menu_instance.items[-1]:
                     menu_instance.selected_item = len(menu_instance.items) - 1
                     menu_instance.draw()
             elif pin_name == "KEY2":
@@ -694,6 +694,7 @@ def show_main_menu():
         "Show Info",
         "Settings",
         "Shutdown",
+        "Reboot",
     ]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
@@ -742,6 +743,12 @@ def handle_menu_selection(selection):
         # If shutdown fails or doesn't happen fast enough, script might continue.
         # For robustness, you might want to exit the script after the poweroff command.
         exit() # Exit the Python script as OS is shutting down
+    elif selection == "Reboot":
+        menu_instance.display_message_screen("System", "Rebooting...", delay=2)
+        print("Rebooting now via systemctl reboot.")
+        # Perform actual reboot. Needs proper permissions similar to shutdown.
+        subprocess.run(["sudo", "reboot"], check=True)
+        exit()  # Exit as the system is rebooting
     
     # After any program finishes, redraw the menu
     menu_instance.draw()
