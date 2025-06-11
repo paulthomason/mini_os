@@ -250,6 +250,19 @@ def button_event_handler(channel):
                 draw_brightness_screen()
             elif pin_name == "JOY_PRESS" or pin_name == "KEY1":
                 show_settings_menu()
+        elif menu_instance.current_screen == "wifi_list":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                selection = menu_instance.get_selected_item()
+                if selection == "Back" or selection == "No Networks Found":
+                    show_settings_menu()
+                else:
+                    connect_to_wifi(selection)
+            elif pin_name == "KEY1":
+                show_settings_menu()
         elif menu_instance.current_screen == "button_game":
             if pin_name in BUTTON_NAMES:
                 handle_game_input(pin_name)
@@ -318,6 +331,50 @@ def run_program2():
     time.sleep(2)
     menu_instance.display_message_screen("Program 2", "Done!", delay=1.5)
     menu_instance.clear_display()
+
+
+def show_wifi_networks():
+    """Scan for Wi-Fi networks and display them in a menu."""
+    stop_scrolling()
+    networks = []
+    try:
+        output = subprocess.check_output([
+            "nmcli",
+            "-t",
+            "-f",
+            "ssid",
+            "dev",
+            "wifi",
+        ]).decode()
+        networks = [line for line in output.splitlines() if line]
+    except Exception:
+        networks = []
+
+    if not networks:
+        networks = ["No Networks Found"]
+
+    networks.append("Back")
+    menu_instance.items = networks
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "wifi_list"
+    menu_instance.draw()
+
+
+def connect_to_wifi(ssid):
+    """Attempt to connect to the given SSID using nmcli."""
+    password = os.environ.get("MINI_OS_WIFI_PASSWORD")
+    cmd = ["nmcli", "device", "wifi", "connect", ssid]
+    if password:
+        cmd.extend(["password", password])
+
+    try:
+        subprocess.run(cmd, check=True)
+        menu_instance.display_message_screen("Wi-Fi", f"Connected to {ssid}", delay=3)
+    except Exception:
+        menu_instance.display_message_screen("Wi-Fi", f"Failed to connect to {ssid}", delay=3)
+
+    show_wifi_networks()
 
 def run_system_monitor(duration=10):
     """Display CPU temperature, load and memory usage for a few seconds."""
@@ -533,7 +590,7 @@ def draw_brightness_screen():
 
 def show_settings_menu():
     stop_scrolling()
-    menu_instance.items = ["Brightness", "Back"]
+    menu_instance.items = ["Brightness", "Wi-Fi Setup", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "settings"
@@ -563,6 +620,8 @@ def handle_settings_selection(selection):
     if selection == "Brightness":
         menu_instance.current_screen = "brightness"
         draw_brightness_screen()
+    elif selection == "Wi-Fi Setup":
+        show_wifi_networks()
     elif selection == "Back":
         show_main_menu()
 
