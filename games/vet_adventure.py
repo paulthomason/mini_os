@@ -9,44 +9,158 @@ state = "start"
 
 STEPS = {
     "start": {
-        "text": ["Gorgina sits at", "the referral desk."],
+        "text": ["Gorgina begins", "her day at desk."],
         "choices": [
-            ("Answer phone", "phone"),
-            ("Check schedule", "schedule"),
-            ("Go home", "end"),
+            ("Check messages", "messages"),
+            ("Look at schedule", "schedule"),
+            ("Front desk", "front_desk"),
         ],
     },
-    "phone": {
-        "text": ["A vet requests", "an ortho consult."],
+    "messages": {
+        "text": ["Clients left", "several messages."],
         "choices": [
-            ("Book it", "booked"),
-            ("Ask for email", "email"),
-            ("Hang up", "end"),
+            ("Tell Anderson", "anderson"),
+            ("Call client", "call_client"),
+            ("Check techs", "tech_room"),
         ],
     },
-    "schedule": {
-        "text": ["A slot opens at", "3pm this afternoon."],
+    "anderson": {
+        "text": ["Dr. Anderson", "checks in."],
         "choices": [
-            ("Call to confirm", "booked"),
-            ("Leave open", "end"),
+            ("Ask for tasks", "anderson_tasks"),
+            ("Back to desk", "start"),
+        ],
+    },
+    "anderson_tasks": {
+        "text": ["She asks you to", "check on Nova."],
+        "choices": [
+            ("Find Nova", "find_nova"),
             ("Back", "start"),
         ],
     },
-    "email": {
-        "text": ["They'll send", "records later."],
+    "find_nova": {
+        "text": ["Nova needs help", "calling a client."],
+        "choices": [
+            ("Assist", "assist_nova"),
+            ("Back", "start"),
+        ],
+    },
+    "assist_nova": {
+        "text": ["Call goes well,", "Nova relieved."],
         "choices": [
             ("Back to desk", "start"),
         ],
     },
-    "booked": {
-        "text": ["Consult scheduled!", "Great job Gorgina!"],
+    "tech_room": {
+        "text": ["Mel and Maddie", "prep for surgery."],
         "choices": [
-            ("Another call", "phone"),
-            ("End day", "end"),
+            ("Offer help", "offer_help"),
+            ("Back", "start"),
+        ],
+    },
+    "offer_help": {
+        "text": ["Paul and Pablo", "grab supplies."],
+        "choices": [
+            ("Return to desk", "start"),
+        ],
+    },
+    "call_client": {
+        "text": ["You update the", "client's meds."],
+        "choices": [
+            ("Record note", "record_note"),
+            ("Back", "start"),
+        ],
+    },
+    "record_note": {
+        "text": ["Note saved for", "the vets."],
+        "choices": [
+            ("Wrap up", "wrap_up"),
+        ],
+    },
+    "front_desk": {
+        "text": ["Abby steps in,", "adding confusion."],
+        "choices": [
+            ("Stay firm", "firm"),
+            ("Let her", "chaos"),
+            ("Back", "start"),
+        ],
+    },
+    "firm": {
+        "text": ["Abby sighs and", "backs away."],
+        "choices": [
+            ("Back to desk", "start"),
+        ],
+    },
+    "chaos": {
+        "text": ["Destiny misplaces", "paperwork again."],
+        "choices": [
+            ("Fix it", "fix_it"),
+            ("Back", "start"),
+        ],
+    },
+    "fix_it": {
+        "text": ["You fix the mess", "without fuss."],
+        "choices": [
+            ("Back to desk", "start"),
+        ],
+    },
+    "schedule": {
+        "text": ["You review the", "appointment list."],
+        "choices": [
+            ("Confirm clients", "confirm_apps"),
+            ("Find open slot", "open_slot"),
+            ("Exam room", "exam_ready"),
+        ],
+    },
+    "confirm_apps": {
+        "text": ["Clients confirm or", "reschedule."],
+        "choices": [
+            ("Mark updated", "wrap_up"),
+        ],
+    },
+    "open_slot": {
+        "text": ["3pm slot is", "available today."],
+        "choices": [
+            ("Tell Doyle", "doyle"),
+            ("Leave open", "wrap_up"),
+            ("Back", "schedule"),
+        ],
+    },
+    "doyle": {
+        "text": ["Dr. Doyle thanks", "you for the info."],
+        "choices": [
+            ("Back to desk", "wrap_up"),
+        ],
+    },
+    "wrap_up": {
+        "text": ["It's nearly 5pm.", "Anything else?"],
+        "choices": [
+            ("Clock out", "end"),
+            ("Check desk", "start"),
+        ],
+    },
+    "exam_ready": {
+        "text": ["Maddie signals", "a patient ready."],
+        "choices": [
+            ("Relay to vet", "relay_vet"),
+            ("Get vitals", "vitals"),
+            ("Back", "start"),
+        ],
+    },
+    "relay_vet": {
+        "text": ["You alert Dr.", "Anderson."],
+        "choices": [
+            ("Back to desk", "start"),
+        ],
+    },
+    "vitals": {
+        "text": ["Paul records the", "vitals with you."],
+        "choices": [
+            ("Back to desk", "start"),
         ],
     },
     "end": {
-        "text": ["Day is done.", "Thanks for playing"],
+        "text": ["5pm hits.", "Time to go home!"],
         "choices": [],
     },
 }
