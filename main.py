@@ -153,7 +153,7 @@ gallery_images = []
 gallery_index = 0
 
 # --- IRC Chat ---
-IRC_SERVER = "petserver.local"
+IRC_SERVER = "192.168.0.81"
 IRC_PORT = 6667
 IRC_CHANNEL = "#pet"
 IRC_NICK = "birdie"
@@ -719,7 +719,11 @@ def connect_irc():
         irc_socket.sendall(f"USER {IRC_NICK} 0 * :{IRC_NICK}\r\n".encode())
         irc_socket.sendall(f"JOIN {IRC_CHANNEL}\r\n".encode())
     except Exception as e:
-        print(f"IRC connection failed: {e}")
+        err_msg = f"IRC connection failed: {e}"
+        print(err_msg)
+        chat_messages.append(err_msg)
+        if len(chat_messages) > 100:
+            chat_messages.pop(0)
         irc_socket = None
         return
 
@@ -735,7 +739,11 @@ def connect_irc():
                     line, buffer = buffer.split("\r\n", 1)
                     handle_irc_line(line)
             except Exception as e:
-                print(f"IRC listener error: {e}")
+                err_msg = f"IRC listener error: {e}"
+                print(err_msg)
+                chat_messages.append(err_msg)
+                if len(chat_messages) > 100:
+                    chat_messages.pop(0)
                 break
 
     irc_thread = threading.Thread(target=listen, daemon=True)
@@ -793,6 +801,8 @@ def draw_chat_screen():
 def start_chat():
     """Enter the IRC chat view."""
     stop_scrolling()
+    if irc_socket is None:
+        connect_irc()
     menu_instance.current_screen = "irc_chat"
     draw_chat_screen()
 
