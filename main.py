@@ -441,6 +441,17 @@ def button_event_handler(channel):
                     connect_to_wifi(selection)
             elif pin_name == "KEY1":
                 show_settings_menu()
+        elif menu_instance.current_screen == "bluetooth_list":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                selection = menu_instance.get_selected_item()
+                if selection == "Back" or selection == "No Devices Found":
+                    show_main_menu()
+            elif pin_name == "KEY1":
+                show_main_menu()
         elif menu_instance.current_screen == "games":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -771,6 +782,35 @@ def show_wifi_networks():
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "wifi_list"
+    menu_instance.draw()
+
+
+def show_bluetooth_devices():
+    """Scan for Bluetooth devices and display them in a menu."""
+    stop_scrolling()
+
+    def scan_devices():
+        devs = []
+        try:
+            output = subprocess.check_output(["hcitool", "scan"], stderr=subprocess.DEVNULL).decode()
+            for line in output.splitlines():
+                m = re.search(r"([0-9A-F:]{17})\s+(.+)", line.strip())
+                if m:
+                    addr, name = m.groups()
+                    devs.append(f"{name} ({addr})")
+        except Exception:
+            devs = []
+        return devs
+
+    devices = scan_devices()
+    if not devices:
+        devices = ["No Devices Found"]
+
+    devices.append("Back")
+    menu_instance.items = devices
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "bluetooth_list"
     menu_instance.draw()
 
 
@@ -1812,6 +1852,7 @@ def show_main_menu():
         "Image Gallery",
         "System Monitor",
         "Network Info",
+        "Bluetooth",
         "Top Stories",
         "Date & Time",
         "Show Info",
@@ -1854,6 +1895,9 @@ def handle_menu_selection(selection):
         run_system_monitor()
     elif selection == "Network Info":
         show_network_info()
+    elif selection == "Bluetooth":
+        show_bluetooth_devices()
+        return
     elif selection == "Top Stories":
         show_top_stories()
         return
