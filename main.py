@@ -2168,6 +2168,9 @@ def run_sudo_command(cmd, password):
         )
         success = result.returncode == 0
         output = result.stdout
+    except subprocess.TimeoutExpired:
+        success = False
+        output = "Command timed out"
     except Exception as e:
         success = False
         output = str(e)
@@ -2217,7 +2220,11 @@ def run_shell_command(cmd):
         start_sudo_password(cmd)
         return
     try:
-        output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=10).decode()
+        output = subprocess.check_output(
+            cmd, shell=True, stderr=subprocess.STDOUT, timeout=10
+        ).decode()
+    except subprocess.TimeoutExpired:
+        output = "Command timed out"
     except subprocess.CalledProcessError as e:
         output = e.output.decode() if e.output else str(e)
     except Exception as e:
