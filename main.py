@@ -6,6 +6,7 @@ import subprocess
 from datetime import datetime
 import os
 import random
+import threading
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -74,6 +75,10 @@ game_round = 0
 game_score = 0
 game_prompt = None
 TOTAL_GAME_ROUNDS = 10
+
+# Scrolling support for long game prompts
+scroll_thread = None
+scroll_stop_event = threading.Event()
 
 # --- Fonts ---
 # Try to load a monospace font for better alignment, fallback to default.
@@ -411,16 +416,69 @@ def show_network_info(duration=10):
 # --- Reaction Game ---
 
 def draw_game_screen(prompt):
-    img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
-    draw = ImageDraw.Draw(img)
-    draw.text((5, 5), f"Round {game_round+1}/{TOTAL_GAME_ROUNDS}", font=font_medium, fill=(255, 255, 255))
-    draw.text((5, 20), f"Score: {game_score}", font=font_medium, fill=(255, 255, 255))
-    draw.text((5, 45), prompt, font=font_large, fill=(0, 255, 0))
-    device.display(img)
+    """Display the current round prompt with wrapping and scrolling support."""
+    global scroll_thread, scroll_stop_event
+
+    # Stop any existing scrolling thread before drawing
+    if scroll_thread:
+        scroll_stop_event.set()
+        scroll_thread.join()
+        scroll_thread = None
+
+    dummy_img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    max_width = DISPLAY_WIDTH - 10
+    lines = wrap_text(prompt, font_large, max_width, dummy_draw)
+    line_height = dummy_draw.textbbox((0, 0), "A", font=font_large)[3] + 2
+    available_height = DISPLAY_HEIGHT - 45
+    total_height = len(lines) * line_height
+
+    if total_height <= available_height:
+        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), f"Round {game_round+1}/{TOTAL_GAME_ROUNDS}", font=font_medium, fill=(255, 255, 255))
+        draw.text((5, 20), f"Score: {game_score}", font=font_medium, fill=(255, 255, 255))
+        y = 45
+        for line in lines:
+            draw.text((5, y), line, font=font_large, fill=(0, 255, 0))
+            y += line_height
+        device.display(img)
+    else:
+        def scroll_task():
+            offset = 0
+            max_offset = total_height - available_height
+            while not scroll_stop_event.is_set():
+                img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+                draw = ImageDraw.Draw(img)
+                draw.text((5, 5), f"Round {game_round+1}/{TOTAL_GAME_ROUNDS}", font=font_medium, fill=(255, 255, 255))
+                draw.text((5, 20), f"Score: {game_score}", font=font_medium, fill=(255, 255, 255))
+                y = 45 - offset
+                for line in lines:
+                    draw.text((5, y), line, font=font_large, fill=(0, 255, 0))
+                    y += line_height
+                device.display(img)
+                offset += 1
+                if offset > max_offset:
+                    offset = 0
+                time.sleep(0.2)
+
+        scroll_stop_event.clear()
+        scroll_thread = threading.Thread(target=scroll_task, daemon=True)
+        scroll_thread.start()
+
+
+def stop_scrolling():
+    """Stop the scrolling thread if it's running."""
+    global scroll_thread
+    if scroll_thread:
+        scroll_stop_event.set()
+        scroll_thread.join()
+        scroll_thread = None
 
 
 def start_button_game(rounds=10):
     global game_round, game_score, TOTAL_GAME_ROUNDS
+    stop_scrolling()
     game_round = 0
     game_score = 0
     TOTAL_GAME_ROUNDS = rounds
@@ -438,6 +496,7 @@ def next_game_round():
 
 def handle_game_input(pin_name):
     global game_round, game_score
+    stop_scrolling()
     if pin_name == game_prompt:
         game_score += 1
         game_round += 1
@@ -467,6 +526,7 @@ def draw_brightness_screen():
 
 
 def show_settings_menu():
+    stop_scrolling()
     menu_instance.items = ["Brightness", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
@@ -475,6 +535,7 @@ def show_settings_menu():
 
 
 def show_main_menu():
+    stop_scrolling()
     menu_instance.items = [
         "Run Program 1",
         "Run Program 2",
