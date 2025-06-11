@@ -118,6 +118,12 @@ try:
 except Exception:
     NYT_API_KEY = "YOUR_API_KEY_HERE"
 
+# --- Image Gallery ---
+IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
+os.makedirs(IMAGES_DIR, exist_ok=True)
+gallery_images = []
+gallery_index = 0
+
 
 def wrap_text(text, font, max_width, draw):
     """Return a list of lines wrapped to fit within max_width."""
@@ -157,7 +163,7 @@ class Menu:
 
         # Draw header
         header_text = "Mini-OS Menu"
-        if self.current_screen == "nyt_list":
+        if self.current_screen in ("nyt_list", "nyt_headline"):
             header_text = "NYT Top Stories"
         draw.text((5, 2), header_text, font=font_large, fill=(0, 255, 255))
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255)) # Separator line
@@ -288,13 +294,13 @@ def button_event_handler(channel):
                     connect_to_wifi(selection)
             elif pin_name == "KEY1":
                 show_settings_menu()
-        elif menu_instance.current_screen == "nyt_list":
-            if pin_name == "JOY_UP":
-                menu_instance.navigate("up")
-            elif pin_name == "JOY_DOWN":
-                menu_instance.navigate("down")
+        elif menu_instance.current_screen == "nyt_headline":
+            if pin_name == "JOY_UP" and current_story_index > 0:
+                draw_headline(current_story_index - 1)
+            elif pin_name == "JOY_DOWN" and current_story_index < len(nyt_stories) - 1:
+                draw_headline(current_story_index + 1)
             elif pin_name == "KEY1":
-                draw_story_detail(menu_instance.selected_item)
+                draw_story_detail(current_story_index)
             elif pin_name == "KEY3":
                 show_main_menu()
         elif menu_instance.current_screen == "nyt_story":
@@ -319,6 +325,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "typer":
             if pin_name in BUTTON_PINS:
                 handle_typer_input(pin_name)
+        elif menu_instance.current_screen == "image_gallery":
+            if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
+                handle_gallery_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -352,8 +361,58 @@ def run_git_pull():
     menu_instance.clear_display()
 
 
+def start_image_gallery():
+    """Load images from the images directory and display the first one."""
+    global gallery_images, gallery_index
+    stop_scrolling()
+    try:
+        gallery_images = [
+            f for f in sorted(os.listdir(IMAGES_DIR))
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif"))
+        ]
+    except Exception:
+        gallery_images = []
+
+    if not gallery_images:
+        menu_instance.display_message_screen("Gallery", "No images found", delay=3)
+        show_main_menu()
+        return
+
+    gallery_index = 0
+    menu_instance.current_screen = "image_gallery"
+    show_gallery_image()
+
+
+def show_gallery_image():
+    """Display the current image in the gallery."""
+    if not gallery_images:
+        return
+    path = os.path.join(IMAGES_DIR, gallery_images[gallery_index])
+    try:
+        img = Image.open(path).convert("RGB")
+        img = img.resize((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    except Exception:
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), "black")
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), "Load error", font=font_small, fill=(255, 0, 0))
+    thread_safe_display(img)
+
+
+def handle_gallery_input(pin_name):
+    """Navigate through images or exit back to the main menu."""
+    global gallery_index
+    if pin_name == "JOY_LEFT":
+        gallery_index = (gallery_index - 1) % len(gallery_images)
+        show_gallery_image()
+    elif pin_name == "JOY_RIGHT":
+        gallery_index = (gallery_index + 1) % len(gallery_images)
+        show_gallery_image()
+    elif pin_name == "JOY_PRESS":
+        show_main_menu()
+
+
 def show_top_stories():
-    """Fetch and display NYT top stories in a selectable menu."""
+    """Fetch NYT top stories and show the first headline."""
     stop_scrolling()
     global nyt_stories
     try:
@@ -371,19 +430,29 @@ def show_top_stories():
         show_main_menu()
         return
 
-    titles = []
-    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
-    dummy_draw = ImageDraw.Draw(dummy_img)
-    for story in nyt_stories:
-        lines = wrap_text(story.get("title", ""), font_medium, DISPLAY_WIDTH - 10, dummy_draw)
-        titles.append("\n".join(lines) + "\n")
+    draw_headline(0)
 
-    menu_instance.items = titles
-    menu_instance.selected_item = 0
-    menu_instance.view_start = 0
-    menu_instance.current_screen = "nyt_list"
-    menu_instance.max_visible_items = 3
-    menu_instance.draw()
+
+def draw_headline(index):
+    """Display a single headline identified by index."""
+    global current_story_index
+    current_story_index = index
+    menu_instance.current_screen = "nyt_headline"
+    story = nyt_stories[index]
+    title = story.get("title", "")
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    max_width = DISPLAY_WIDTH - 10
+    lines = wrap_text(title, font_medium, max_width, draw)
+    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
+    draw.text((5, 5), "NYT Top Stories", font=font_large, fill=(255, 255, 0))
+    y = 25
+    for line in lines:
+        draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+        y += line_h
+    footer = f"{index + 1}/{len(nyt_stories)} 1=Read 3=Back"
+    draw.text((5, DISPLAY_HEIGHT - 10), footer, font=font_small, fill=(0, 255, 255))
+    device.display(img)
 
 
 def draw_story_detail(index):
@@ -889,6 +958,7 @@ def show_main_menu():
         "Button Game",
         "Launch Codes",
         "Typer",
+        "Image Gallery",
         "System Monitor",
         "Network Info",
         "Top Stories",
@@ -925,6 +995,8 @@ def handle_menu_selection(selection):
         return
     elif selection == "Typer":
         start_typer()
+    elif selection == "Image Gallery":
+        start_image_gallery()
         return
     elif selection == "System Monitor":
         run_system_monitor()
