@@ -96,6 +96,13 @@ will appear so you can respond directly in the browser.
 on your Pi. Only enable the web server on trusted networks and consider adding
 additional authentication if it is exposed beyond localhost.
 
+## Wi-Fi
+
+Choose **Wi-Fi Setup** from the Settings menu to scan for nearby
+networks. Select one and press **KEY3** to connect. Set the environment
+variable `MINI_OS_WIFI_PASSWORD` before starting Mini OS so `nmcli` can
+use it to connect without prompting for the password.
+
 ## Bluetooth
 
 From **Settings** choose **Bluetooth** to scan for nearby devices. Select your
