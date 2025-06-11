@@ -561,6 +561,16 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
                 handle_notes_input(pin_name)
+        elif menu_instance.current_screen == "shell":
+            if pin_name in BUTTON_PINS:
+                handle_shell_input(pin_name)
+        elif menu_instance.current_screen == "shell_output":
+            if pin_name == "JOY_UP":
+                scroll_shell_output(-1)
+            elif pin_name == "JOY_DOWN":
+                scroll_shell_output(1)
+            elif pin_name == "KEY3":
+                start_shell()
         elif menu_instance.current_screen == "image_gallery":
             if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
                 handle_gallery_input(pin_name)
@@ -1859,6 +1869,164 @@ def delete_current_note():
     current_note_file = None
     show_notes_list()
 
+
+# --- Shell Program ---
+
+shell_text = ""
+shell_keyboard_state = 1  # start in lowercase
+shell_typer_row = 1
+shell_typer_col = 0
+
+shell_output_lines = []
+shell_output_line_h = 0
+shell_output_offset = 0
+shell_output_max_offset = 0
+shell_output_render = None
+
+
+def draw_shell_screen():
+    """Render the shell input screen with onscreen keyboard."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+
+    max_width = DISPLAY_WIDTH - 10
+    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
+    lines = wrap_text(shell_text, font_medium, max_width, draw)
+    kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
+    tips_height = 10
+    max_lines = (kb_y - 10) // line_h
+    start = max(0, len(lines) - max_lines)
+    y = 5
+    for line in lines[start:]:
+        draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+        y += line_h
+
+    row_h = (DISPLAY_HEIGHT - kb_y - tips_height) // len(KEY_LAYOUT)
+    key_w = DISPLAY_WIDTH // 10
+    for r, row in enumerate(KEY_LAYOUT):
+        if r == len(KEY_LAYOUT) - 1 and len(row) == 1:
+            offset_x = 5
+            this_key_w = DISPLAY_WIDTH - offset_x * 2
+        else:
+            offset_x = (DISPLAY_WIDTH - len(row) * key_w) // 2
+            this_key_w = key_w
+        for c, ch in enumerate(row):
+            x = offset_x + c * this_key_w
+            yk = kb_y + r * row_h
+            rect = (x + 1, yk + 1, x + this_key_w - 2, yk + row_h - 2)
+            if r == shell_typer_row and c == shell_typer_col:
+                draw.rectangle(rect, fill=(0, 255, 0))
+                text_color = (0, 0, 0)
+            else:
+                draw.rectangle(rect, outline=(255, 255, 255))
+                text_color = (255, 255, 255)
+            bbox = draw.textbbox((0, 0), ch, font=font_small)
+            tx = x + (this_key_w - (bbox[2] - bbox[0])) // 2
+            ty = yk + (row_h - (bbox[3] - bbox[1])) // 2
+            draw.text((tx, ty), ch, font=font_small, fill=text_color)
+
+    tips = "1=Shift 2=Del 3=Run"
+    draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips, font=font_small, fill=(0, 255, 255))
+
+    thread_safe_display(img)
+
+
+def start_shell():
+    """Initialize the shell input program."""
+    global shell_text, shell_keyboard_state, KEY_LAYOUT, shell_typer_row, shell_typer_col
+    stop_scrolling()
+    shell_text = ""
+    shell_keyboard_state = 1
+    KEY_LAYOUT = KEY_LAYOUTS[shell_keyboard_state]
+    shell_typer_row = 1
+    shell_typer_col = 0
+    menu_instance.current_screen = "shell"
+    draw_shell_screen()
+
+
+def show_shell_output(cmd, output):
+    """Display command output with scrolling."""
+    global shell_output_lines, shell_output_line_h, shell_output_offset, shell_output_max_offset, shell_output_render
+    stop_scrolling()
+    menu_instance.current_screen = "shell_output"
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    max_width = DISPLAY_WIDTH - 10
+    shell_output_lines = wrap_text(f"$ {cmd}\n{output}", font_small, max_width, dummy_draw)
+    shell_output_line_h = dummy_draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    shell_output_offset = 0
+    available_h = DISPLAY_HEIGHT - 35
+    shell_output_max_offset = max(0, len(shell_output_lines) * shell_output_line_h - available_h)
+
+    def render():
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), "Shell Output", font=font_large, fill=(255, 255, 0))
+        y = 25 - shell_output_offset
+        for line in shell_output_lines:
+            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+            y += shell_output_line_h
+        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+        thread_safe_display(img)
+
+    shell_output_render = render
+    shell_output_render()
+
+
+def scroll_shell_output(direction):
+    global shell_output_offset
+    if not shell_output_render:
+        return
+    shell_output_offset += direction * shell_output_line_h
+    if shell_output_offset < 0:
+        shell_output_offset = 0
+    if shell_output_offset > shell_output_max_offset:
+        shell_output_offset = shell_output_max_offset
+    shell_output_render()
+
+
+def run_shell_command(cmd):
+    """Execute the given command and show its output."""
+    global shell_text
+    if not cmd.strip():
+        return
+    try:
+        output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=10).decode()
+    except subprocess.CalledProcessError as e:
+        output = e.output.decode() if e.output else str(e)
+    except Exception as e:
+        output = str(e)
+    shell_text = ""
+    show_shell_output(cmd, output)
+
+
+def handle_shell_input(pin_name):
+    """Handle joystick and button input for the shell program."""
+    global shell_typer_row, shell_typer_col, shell_text, shell_keyboard_state, KEY_LAYOUT
+    if pin_name == "JOY_LEFT" and shell_typer_col > 0:
+        shell_typer_col -= 1
+    elif pin_name == "JOY_RIGHT" and shell_typer_col < len(KEY_LAYOUT[shell_typer_row]) - 1:
+        shell_typer_col += 1
+    elif pin_name == "JOY_UP" and shell_typer_row > 0:
+        shell_typer_row -= 1
+        shell_typer_col = min(shell_typer_col, len(KEY_LAYOUT[shell_typer_row]) - 1)
+    elif pin_name == "JOY_DOWN" and shell_typer_row < len(KEY_LAYOUT) - 1:
+        shell_typer_row += 1
+        shell_typer_col = min(shell_typer_col, len(KEY_LAYOUT[shell_typer_row]) - 1)
+    elif pin_name == "JOY_PRESS":
+        shell_text += KEY_LAYOUT[shell_typer_row][shell_typer_col]
+    elif pin_name == "KEY1":
+        shell_keyboard_state = (shell_keyboard_state + 1) % len(KEY_LAYOUTS)
+        KEY_LAYOUT = KEY_LAYOUTS[shell_keyboard_state]
+        shell_typer_row = min(shell_typer_row, len(KEY_LAYOUT) - 1)
+        shell_typer_col = min(shell_typer_col, len(KEY_LAYOUT[shell_typer_row]) - 1)
+    elif pin_name == "KEY2":
+        shell_text = shell_text[:-1]
+    elif pin_name == "KEY3":
+        run_shell_command(shell_text)
+        return
+    draw_shell_screen()
+
 def update_backlight():
     if backlight_pwm:
         backlight_pwm.ChangeDutyCycle(brightness_level)
@@ -2049,6 +2217,7 @@ def show_utilities_menu():
         "Date & Time",
         "Show Info",
         "Web Server",
+        "Shell",
         "Back",
     ]
     menu_instance.selected_item = 0
@@ -2068,6 +2237,8 @@ def handle_utilities_selection(selection):
         show_info()
     elif selection == "Web Server":
         start_web_server()
+    elif selection == "Shell":
+        start_shell()
     elif selection == "Back":
         show_main_menu()
 
