@@ -4,6 +4,8 @@ This repository contains a simple menu-based interface for a Raspberry Pi with a
 
 The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick. It also provides menu options to briefly display the current date and time, a simple system monitor showing CPU temperature, load and memory usage, and a network info screen showing the current IP address and Wi-Fi SSID.
 
+Two small games are included: a reaction-based **Button Game** and a memory challenge called **Launch Codes**. Both can be started from the main menu and make use of the three buttons and joystick directions for input.
+
 ## Setup on Raspberry Pi OS Lite (32-bit)
 
 Install the required packages and enable the SPI interface:
