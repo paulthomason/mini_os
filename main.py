@@ -892,6 +892,8 @@ def show_bluetooth_devices():
     menu_instance.items = devices
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
+    menu_instance.font = font_small
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.current_screen = "bluetooth_list"
     menu_instance.draw()
 
@@ -919,6 +921,7 @@ def connect_bluetooth_device(device):
         else:
             details = output or "Connection attempt did not return a success message."
             details = f"Failed to connect to {device}.\n{details}"
+            save_bt_failure(details)
             show_scroll_message("Bluetooth Error", details)
     except subprocess.CalledProcessError as e:
         stdout = e.stdout.decode().strip() if e.stdout else ""
@@ -928,6 +931,7 @@ def connect_bluetooth_device(device):
             details = "Failed to connect. Ensure the device is in pairing mode and in range."
         else:
             details = f"Failed to connect to {device}.\n{details}"
+        save_bt_failure(details)
         show_scroll_message("Bluetooth Error", details)
 
 
@@ -955,6 +959,7 @@ def connect_bluetooth_device_with_pin(device):
         else:
             details = output or "Connection attempt did not return a success message."
             details = f"Failed to connect to {device}.\n{details}"
+            save_bt_failure(details)
             show_scroll_message("Bluetooth Error", details)
     except subprocess.CalledProcessError as e:
         stdout = e.stdout.decode().strip() if e.stdout else ""
@@ -964,6 +969,7 @@ def connect_bluetooth_device_with_pin(device):
             details = "Failed to connect. Ensure the device is in pairing mode and in range."
         else:
             details = f"Failed to connect to {device}.\n{details}"
+        save_bt_failure(details)
         show_scroll_message("Bluetooth Error", details)
 
 
@@ -1852,6 +1858,23 @@ def save_note(text, filename=None):
         f.write(text)
 
 
+def save_bt_failure(details):
+    """Save bluetooth connection error details to the notes directory."""
+    pattern = re.compile(r"btfail(\d+)\.txt")
+    try:
+        existing = [
+            int(m.group(1))
+            for m in (pattern.match(f) for f in os.listdir(NOTES_DIR))
+            if m
+        ]
+        next_num = max(existing, default=0) + 1
+        path = os.path.join(NOTES_DIR, f"btfail{next_num}.txt")
+        with open(path, "w") as f:
+            f.write(details)
+    except Exception:
+        pass
+
+
 def show_notes_list():
     """Display a menu of saved notes."""
     stop_scrolling()
@@ -2116,6 +2139,7 @@ def draw_brightness_screen():
 def show_settings_menu():
     """Top-level settings menu."""
     stop_scrolling()
+    menu_instance.font = font_medium
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.items = [
         "Display",
