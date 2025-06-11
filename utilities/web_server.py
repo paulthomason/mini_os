@@ -172,21 +172,28 @@ def shell():
         cmd = request.form.get("cmd", "").strip()
         if WAITING_FOR_PASSWORD:
             SHELL_PROC.sendline(password)
-            SHELL_PROC.expect("__CMD_DONE__", timeout=30)
-            output = SHELL_PROC.before
+            try:
+                SHELL_PROC.expect("__CMD_DONE__", timeout=30)
+                output = SHELL_PROC.before
+            except pexpect.exceptions.TIMEOUT:
+                output = "Command timed out"
             WAITING_FOR_PASSWORD = False
             SHELL_HISTORY.append((_WAITING_CMD, output))
             _WAITING_CMD = ""
             return redirect("/shell")
         if cmd:
             SHELL_PROC.sendline(f"{cmd}; echo __CMD_DONE__")
-            idx = SHELL_PROC.expect(["sudo password:", "__CMD_DONE__"], timeout=30)
-            output = SHELL_PROC.before + SHELL_PROC.after.replace("__CMD_DONE__", "")
-            if idx == 0:
-                WAITING_FOR_PASSWORD = True
-                _WAITING_CMD = cmd
-                SHELL_HISTORY.append((cmd, output))
-            else:
+            try:
+                idx = SHELL_PROC.expect(["sudo password:", "__CMD_DONE__"], timeout=30)
+                output = SHELL_PROC.before + SHELL_PROC.after.replace("__CMD_DONE__", "")
+                if idx == 0:
+                    WAITING_FOR_PASSWORD = True
+                    _WAITING_CMD = cmd
+                    SHELL_HISTORY.append((cmd, output))
+                else:
+                    SHELL_HISTORY.append((cmd, output))
+            except pexpect.exceptions.TIMEOUT:
+                output = "Command timed out"
                 SHELL_HISTORY.append((cmd, output))
             return redirect("/shell")
 
