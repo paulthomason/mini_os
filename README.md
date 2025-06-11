@@ -69,6 +69,17 @@ a simple browser based interface for viewing and updating settings. From the
 `/settings` page you can change the display brightness, select a font and adjust
 the text size. Wi-Fi can also be toggled on or off directly from the browser.
 
+### Interactive Shell
+
+Opening `/shell` in a browser now provides a live Bash prompt. Commands are
+executed in a persistent shell so each one can build on the previous. If a
+command asks for a password (for example when using `sudo`), a password field
+will appear so you can respond directly in the browser.
+
+**Security Warning:** anyone who can access this page can run arbitrary commands
+on your Pi. Only enable the web server on trusted networks and consider adding
+additional authentication if it is exposed beyond localhost.
+
 ## Bluetooth
 
 From **Settings** choose **Bluetooth** to scan for nearby devices. Select your
