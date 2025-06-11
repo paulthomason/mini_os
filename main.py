@@ -367,6 +367,18 @@ def run_program2():
     menu_instance.clear_display()
 
 
+def run_git_pull():
+    """Update the mini_os directory using git pull."""
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    menu_instance.display_message_screen("Git Update", "Running git pull...", delay=1)
+    try:
+        subprocess.run(["git", "-C", repo_dir, "pull"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        menu_instance.display_message_screen("Git Update", "Pull successful", delay=2)
+    except subprocess.CalledProcessError:
+        menu_instance.display_message_screen("Git Update", "Pull failed", delay=2)
+    menu_instance.clear_display()
+
+
 def show_top_stories():
     """Fetch and display NYT top stories in a selectable menu."""
     stop_scrolling()
@@ -808,6 +820,7 @@ def show_main_menu():
     menu_instance.items = [
         "Run Program 1",
         "Run Program 2",
+        "Update Mini-OS",
         "Button Game",
         "Launch Codes",
         "System Monitor",
@@ -840,6 +853,8 @@ def handle_menu_selection(selection):
         run_program1()
     elif selection == "Run Program 2":
         run_program2()
+    elif selection == "Update Mini-OS":
+        run_git_pull()
     elif selection == "Button Game":
         start_button_game()
         return
