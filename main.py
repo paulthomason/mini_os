@@ -451,7 +451,11 @@ def button_event_handler(channel):
                 if selection == "Back" or selection == "No Devices Found":
                     show_settings_menu()
             elif pin_name == "KEY1":
-                show_settings_menu()
+                selection = menu_instance.get_selected_item()
+                if selection == "Back" or selection == "No Devices Found":
+                    show_settings_menu()
+                else:
+                    connect_bluetooth_device(selection)
         elif menu_instance.current_screen == "games":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -856,6 +860,21 @@ def show_bluetooth_devices():
     menu_instance.view_start = 0
     menu_instance.current_screen = "bluetooth_list"
     menu_instance.draw()
+
+
+def connect_bluetooth_device(device):
+    """Attempt to connect to the selected Bluetooth device using bluetoothctl."""
+    m = re.search(r"\(([0-9A-F:]{17})\)$", device)
+    if not m:
+        menu_instance.display_message_screen("Bluetooth", "Invalid device", delay=2)
+        return
+    addr = m.group(1)
+    try:
+        subprocess.run(["bluetoothctl", "connect", addr], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        menu_instance.display_message_screen("Bluetooth", f"Connected to {device}", delay=3)
+    except subprocess.CalledProcessError as e:
+        err = e.stderr.decode().strip() if e.stderr else "Connection failed"
+        menu_instance.display_message_screen("Bluetooth", err or "Connection failed", delay=3)
 
 
 def connect_to_wifi(ssid):
