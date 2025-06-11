@@ -371,7 +371,13 @@ def show_date_time(duration=10):
         img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
         draw = ImageDraw.Draw(img)
         draw.text((5, 5), "Date & Time", font=font_large, fill=(255, 255, 0))
-        draw.text((5, 30), now, font=font_medium, fill=(255, 255, 255))
+        max_width = DISPLAY_WIDTH - 10
+        lines = wrap_text(now, font_medium, max_width, draw)
+        y = 30
+        line_height = draw.textbbox((0, 0), "A", font=font_medium)[3]
+        for line in lines:
+            draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+            y += line_height + 2
         device.display(img)
         time.sleep(1)
     menu_instance.clear_display()
