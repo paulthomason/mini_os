@@ -23,6 +23,7 @@ from PIL import ImageFont, ImageDraw, Image
 # bgr=True is common for ST7735S displays.
 DISPLAY_WIDTH = 128
 DISPLAY_HEIGHT = 128
+KEYBOARD_OFFSET = 8  # Pixels to shift on-screen keyboard up
 
 # Pin configuration for luma.lcd
 RST_PIN = 27  # GPIO 27 
@@ -884,7 +885,9 @@ def draw_typer_screen():
     max_width = DISPLAY_WIDTH - 10
     line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
     lines = wrap_text(typer_text, font_medium, max_width, draw)
-    max_lines = (DISPLAY_HEIGHT // 2 - 10) // line_h
+    kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
+    tips_height = 10  # Space at bottom for key tips
+    max_lines = (kb_y - 10) // line_h
     start = max(0, len(lines) - max_lines)
     y = 5
     for line in lines[start:]:
@@ -892,8 +895,7 @@ def draw_typer_screen():
         y += line_h
 
     # Keyboard layout in bottom half
-    kb_y = DISPLAY_HEIGHT // 2
-    row_h = (DISPLAY_HEIGHT - kb_y) // len(KEY_LAYOUT)
+    row_h = (DISPLAY_HEIGHT - kb_y - tips_height) // len(KEY_LAYOUT)
     key_w = DISPLAY_WIDTH // 10
     for r, row in enumerate(KEY_LAYOUT):
         if r == len(KEY_LAYOUT) - 1 and len(row) == 1:
@@ -916,6 +918,10 @@ def draw_typer_screen():
             tx = x + (this_key_w - (bbox[2] - bbox[0])) // 2
             ty = y + (row_h - (bbox[3] - bbox[1])) // 2
             draw.text((tx, ty), ch, font=font_small, fill=text_color)
+
+    tips_text = "1=Shift 2=Delete 3=Back"
+    draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips_text,
+              font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
 
