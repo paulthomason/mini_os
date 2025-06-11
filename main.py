@@ -872,7 +872,9 @@ def show_bluetooth_devices():
                         devs[addr] = name
             except Exception:
                 devs = {}
-        return [f"{name} ({addr})" for addr, name in devs.items()]
+        # Display device names before their addresses for easier identification
+        # Sort the list alphabetically by device name for convenience
+        return [f"{name} ({addr})" for addr, name in sorted(devs.items(), key=lambda item: item[1])]
 
     devices = []
 
