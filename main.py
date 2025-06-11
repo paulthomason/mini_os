@@ -91,11 +91,17 @@ timer_stop_event = threading.Event()
 timer_end_time = 0
 
 # --- Fonts ---
-# Try to load a monospace font for better alignment, fallback to default.
+# Use DejaVu Sans which is highly legible on small displays.
 try:
-    font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 10)
-    font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 12)
-    font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 14)
+    font_small = ImageFont.truetype(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11
+    )
+    font_medium = ImageFont.truetype(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 13
+    )
+    font_large = ImageFont.truetype(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 15
+    )
 except IOError:
     print("Defaulting to PIL built-in font as custom font not found.")
     font_small = ImageFont.load_default()
@@ -170,26 +176,21 @@ class Menu:
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255)) # Separator line
 
         y_offset = 25
+        line_height = draw.textbbox((0, 0), "Ag", font=self.font)[3]
         visible_items = self.items[self.view_start:self.view_start + self.max_visible_items]
         for idx, item in enumerate(visible_items):
             i = self.view_start + idx
-            text_color = (255, 255, 255)  # White
-
-            # Determine text size using textbbox (compatible with newer Pillow versions)
-            bbox = draw.textbbox((0, 0), item, font=self.font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
+            text_color = (255, 255, 255)
 
             if i == self.selected_item:
-                text_color = (0, 255, 0)  # Green for selected item
-                # Draw a selection rectangle
+                text_color = (0, 255, 0)
                 draw.rectangle(
-                    [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + text_height + 2)],
+                    [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + line_height + 2)],
                     fill=(50, 50, 50),
-                )  # Dark gray background for selection
+                )
 
             draw.text((5, y_offset), item, font=self.font, fill=text_color)
-            y_offset += text_height + 3  # Line spacing based on font height
+            y_offset += line_height + 4  # Consistent line spacing
 
         thread_safe_display(img) # Send the PIL image to the display
 
