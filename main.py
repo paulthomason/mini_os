@@ -838,17 +838,33 @@ def show_bluetooth_devices():
     stop_scrolling()
 
     def scan_devices():
-        devs = []
+        devs = {}
+        # Attempt a bluetoothctl scan first for better compatibility
         try:
-            output = subprocess.check_output(["hcitool", "scan"], stderr=subprocess.DEVNULL).decode()
+            output = subprocess.check_output(
+                ["bluetoothctl", "--timeout", "5", "scan", "on"],
+                stderr=subprocess.STDOUT,
+            ).decode()
+            output += subprocess.check_output(["bluetoothctl", "devices"]).decode()
             for line in output.splitlines():
-                m = re.search(r"([0-9A-F:]{17})\s+(.+)", line.strip())
+                m = re.search(r"Device\s+([0-9A-F:]{17})\s+(.+)", line.strip())
                 if m:
                     addr, name = m.groups()
-                    devs.append(f"{name} ({addr})")
+                    devs[addr] = name
         except Exception:
-            devs = []
-        return devs
+            # Fallback to hcitool if bluetoothctl is unavailable
+            try:
+                output = subprocess.check_output(
+                    ["hcitool", "scan"], stderr=subprocess.DEVNULL
+                ).decode()
+                for line in output.splitlines():
+                    m = re.search(r"([0-9A-F:]{17})\s+(.+)", line.strip())
+                    if m:
+                        addr, name = m.groups()
+                        devs[addr] = name
+            except Exception:
+                devs = {}
+        return [f"{name} ({addr})" for addr, name in devs.items()]
 
     devices = []
 
@@ -885,9 +901,23 @@ def connect_bluetooth_device(device):
         menu_instance.display_message_screen("Bluetooth", "Invalid device", delay=2)
         return
     addr = m.group(1)
+    bt_commands = f"connect {addr}\nquit\n"
     try:
-        subprocess.run(["bluetoothctl", "connect", addr], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        menu_instance.display_message_screen("Bluetooth", f"Connected to {device}", delay=3)
+        result = subprocess.run(
+            ["bluetoothctl"],
+            input=bt_commands,
+            text=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        output = result.stdout.strip()
+        if "Connection successful" in output:
+            menu_instance.display_message_screen("Bluetooth", f"Connected to {device}", delay=3)
+        else:
+            details = output or "Connection attempt did not return a success message."
+            details = f"Failed to connect to {device}.\n{details}"
+            show_scroll_message("Bluetooth Error", details)
     except subprocess.CalledProcessError as e:
         stdout = e.stdout.decode().strip() if e.stdout else ""
         stderr = e.stderr.decode().strip() if e.stderr else ""
@@ -909,7 +939,7 @@ def connect_bluetooth_device_with_pin(device):
     # Prepare a bluetoothctl command sequence that confirms the passkey
     bt_commands = f"pair {addr}\nyes\ntrust {addr}\nconnect {addr}\nquit\n"
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["bluetoothctl"],
             input=bt_commands,
             text=True,
@@ -917,7 +947,13 @@ def connect_bluetooth_device_with_pin(device):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        menu_instance.display_message_screen("Bluetooth", f"Connected to {device}", delay=3)
+        output = result.stdout.strip()
+        if "Connection successful" in output:
+            menu_instance.display_message_screen("Bluetooth", f"Connected to {device}", delay=3)
+        else:
+            details = output or "Connection attempt did not return a success message."
+            details = f"Failed to connect to {device}.\n{details}"
+            show_scroll_message("Bluetooth Error", details)
     except subprocess.CalledProcessError as e:
         stdout = e.stdout.decode().strip() if e.stdout else ""
         stderr = e.stderr.decode().strip() if e.stderr else ""
