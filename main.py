@@ -108,6 +108,11 @@ backlight_pwm = None
 # --- NYT Top Stories ---
 nyt_stories = []
 current_story_index = 0
+story_lines = []          # Wrapped lines of the currently viewed story
+story_line_h = 0          # Height of a single line
+story_offset = 0          # Current scroll offset in pixels
+story_max_offset = 0      # Maximum allowed offset
+story_render = None       # Function used to re-render the story view
 try:
     from nyt_config import NYT_API_KEY
 except Exception:
@@ -151,7 +156,10 @@ class Menu:
         draw = ImageDraw.Draw(img)
 
         # Draw header
-        draw.text((5, 2), "Mini-OS Menu", font=font_large, fill=(0, 255, 255)) # Cyan header
+        header_text = "Mini-OS Menu"
+        if self.current_screen == "nyt_list":
+            header_text = "NYT Top Stories"
+        draw.text((5, 2), header_text, font=font_large, fill=(0, 255, 255))
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255)) # Separator line
 
         y_offset = 25
@@ -290,7 +298,15 @@ def button_event_handler(channel):
             elif pin_name == "KEY3":
                 show_main_menu()
         elif menu_instance.current_screen == "nyt_story":
-            if pin_name == "KEY1":
+            if pin_name == "JOY_UP":
+                scroll_story(-1)
+            elif pin_name == "JOY_DOWN":
+                scroll_story(1)
+            elif pin_name == "JOY_LEFT" and current_story_index > 0:
+                draw_story_detail(current_story_index - 1)
+            elif pin_name == "JOY_RIGHT" and current_story_index < len(nyt_stories) - 1:
+                draw_story_detail(current_story_index + 1)
+            elif pin_name == "KEY1":
                 open_current_story()
             elif pin_name == "KEY3":
                 show_top_stories()
@@ -403,18 +419,19 @@ def show_top_stories():
     dummy_draw = ImageDraw.Draw(dummy_img)
     for story in nyt_stories:
         lines = wrap_text(story.get("title", ""), font_medium, DISPLAY_WIDTH - 10, dummy_draw)
-        titles.append(lines[0])
+        titles.append("\n".join(lines) + "\n")
 
     menu_instance.items = titles
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "nyt_list"
+    menu_instance.max_visible_items = 3
     menu_instance.draw()
 
 
 def draw_story_detail(index):
-    """Display selected story with scrolling if needed."""
-    global scroll_thread, scroll_stop_event, current_story_index
+    """Display selected story with manual scrolling."""
+    global story_lines, story_line_h, story_offset, story_max_offset, story_render, current_story_index
     stop_scrolling()
     current_story_index = index
     menu_instance.current_screen = "nyt_story"
@@ -425,36 +442,38 @@ def draw_story_detail(index):
     dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
     dummy_draw = ImageDraw.Draw(dummy_img)
     max_width = DISPLAY_WIDTH - 10
-    lines = wrap_text(text, font_small, max_width, dummy_draw)
-    line_h = dummy_draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    story_lines = wrap_text(text, font_small, max_width, dummy_draw)
+    story_line_h = dummy_draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    story_offset = 0
     available_h = DISPLAY_HEIGHT - 35
-    total_h = len(lines) * line_h
+    story_max_offset = max(0, len(story_lines) * story_line_h - available_h)
 
-    def render(offset=0):
+    def render():
         img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
         draw = ImageDraw.Draw(img)
         draw.text((5, 5), header, font=font_large, fill=(255, 255, 0))
-        y = 25 - offset
-        for line in lines:
+        y = 25 - story_offset
+        for line in story_lines:
             draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
-            y += line_h
+            y += story_line_h
         draw.text((5, DISPLAY_HEIGHT - 10), "1=Open 3=Back", font=font_small, fill=(0, 255, 255))
         device.display(img)
 
-    if total_h <= available_h:
-        render()
-    else:
-        def scroll_task():
-            off = 0
-            max_off = total_h - available_h
-            while not scroll_stop_event.is_set():
-                render(off)
-                off = 0 if off >= max_off else off + 1
-                time.sleep(0.2)
+    story_render = render
+    story_render()
 
-        scroll_stop_event.clear()
-        scroll_thread = threading.Thread(target=scroll_task, daemon=True)
-        scroll_thread.start()
+
+def scroll_story(direction):
+    """Scroll the currently viewed story up (-1) or down (1)."""
+    global story_offset
+    if not story_render:
+        return
+    story_offset += direction * story_line_h
+    if story_offset < 0:
+        story_offset = 0
+    if story_offset > story_max_offset:
+        story_offset = story_max_offset
+    story_render()
 
 
 def open_current_story():
@@ -808,6 +827,7 @@ def draw_brightness_screen():
 
 def show_settings_menu():
     stop_scrolling()
+    menu_instance.max_visible_items = 6
     menu_instance.items = ["Brightness", "Wi-Fi Setup", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
@@ -817,6 +837,7 @@ def show_settings_menu():
 
 def show_main_menu():
     stop_scrolling()
+    menu_instance.max_visible_items = 6
     menu_instance.items = [
         "Run Program 1",
         "Run Program 2",
