@@ -878,14 +878,13 @@ def handle_irc_line(line):
 
 
 def draw_chat_screen():
-    """Render the IRC chat screen."""
+    """Render the chat screen."""
     img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
     draw = ImageDraw.Draw(img)
-    draw.text((5, 5), "IRC Chat", font=font_large, fill=(255, 255, 0))
 
     max_width = DISPLAY_WIDTH - 10
     line_h = draw.textbbox((0, 0), "A", font=font_small)[3] + 2
-    available_h = DISPLAY_HEIGHT - 35
+    available_h = DISPLAY_HEIGHT - 15
 
     lines = []
     for msg in chat_messages:
@@ -894,7 +893,7 @@ def draw_chat_screen():
     max_lines = available_h // line_h
     visible = lines[-max_lines:]
 
-    y = 25
+    y = 5
     for line in visible:
         draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
         y += line_h
@@ -1604,7 +1603,7 @@ def show_main_menu():
         "Update and Restart",
         "Games",
         "Notes",
-        "IRC Chat",
+        "Chat",
         "Image Gallery",
         "System Monitor",
         "Network Info",
@@ -1640,7 +1639,7 @@ def handle_menu_selection(selection):
     elif selection == "Notes":
         start_notes()
         return
-    elif selection == "IRC Chat":
+    elif selection == "Chat":
         start_chat()
         return
     elif selection == "Image Gallery":
