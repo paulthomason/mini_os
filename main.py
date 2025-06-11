@@ -490,7 +490,8 @@ def draw_story_detail(index):
         for line in story_lines:
             draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
             y += story_line_h
-        draw.text((5, DISPLAY_HEIGHT - 10), "1=Open 3=Back", font=font_small, fill=(0, 255, 255))
+        # Only show the back hint; opening a link isn't supported here
+        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
         device.display(img)
 
     story_render = render
