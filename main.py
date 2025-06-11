@@ -606,7 +606,7 @@ def run_system_monitor(duration=10):
         # Disk usage for root filesystem
         try:
             usage = shutil.disk_usage("/")
-            disk_str = f"{usage.used // (1024*1024)}/{usage.total // (1024*1024)}MB"
+            disk_str = f"{usage.used // (1024**3)}/{usage.total // (1024**3)}GB"
         except Exception:
             disk_str = "N/A"
 
