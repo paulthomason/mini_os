@@ -1,4 +1,5 @@
 import time
+import random
 from PIL import Image, ImageDraw
 
 thread_safe_display = None
@@ -9,6 +10,11 @@ state = "topics"
 current_topic = None
 question_idx = 0
 score = 0
+quiz_questions = []
+question_offset = 0
+question_max_offset = 0
+question_line_h_small = 0
+question_line_h_medium = 0
 
 # Simple text wrapping helper
 def wrap_text(text, font, max_width, draw):
@@ -104,6 +110,31 @@ QUESTIONS = {
             "opts": ["Triggerfish", "Tuna", "Shark"],
             "a": 0,
         },
+        {
+            "q": "Highest peak in Hawaii?",
+            "opts": ["Mauna Kea", "Haleakala", "Diamond Head"],
+            "a": 0,
+        },
+        {
+            "q": "Hawaii's state bird?",
+            "opts": ["Nene", "Albatross", "Ibis"],
+            "a": 0,
+        },
+        {
+            "q": "Island famous for Na Pali Coast?",
+            "opts": ["Kauai", "Oahu", "Niihau"],
+            "a": 0,
+        },
+        {
+            "q": "Hawaiian word for thank you?",
+            "opts": ["Aloha", "Mahalo", "Ono"],
+            "a": 1,
+        },
+        {
+            "q": "Time zone of Hawaii?",
+            "opts": ["HST", "PST", "MST"],
+            "a": 0,
+        },
     ],
     "Veterinary Internal Medicine": [
         {
@@ -181,6 +212,31 @@ QUESTIONS = {
             "opts": ["Parvo", "Pyometra", "Parrot fever"],
             "a": 0,
         },
+        {
+            "q": "Pancreatitis diagnosed best with?",
+            "opts": ["X-ray", "Ultrasound", "MRI"],
+            "a": 1,
+        },
+        {
+            "q": "Common sign of feline hyperthyroidism?",
+            "opts": ["Weight gain", "Weight loss", "Seizures"],
+            "a": 1,
+        },
+        {
+            "q": "GDV stands for?",
+            "opts": ["Gastric Dilatation Volvulus", "Generalized Dermatitis Virus", "Giant Dog Vomit"],
+            "a": 0,
+        },
+        {
+            "q": "Renal failure leads to high?",
+            "opts": ["Blood urea nitrogen", "Glucose", "Calcium"],
+            "a": 0,
+        },
+        {
+            "q": "A common tick-borne disease in dogs?",
+            "opts": ["Leptospirosis", "Lyme disease", "Distemper"],
+            "a": 1,
+        },
     ],
 }
 
@@ -199,7 +255,7 @@ def start():
 
 
 def handle_input(pin):
-    global state, current_topic, question_idx, score
+    global state, current_topic, question_idx, score, quiz_questions, question_offset
     if pin == "JOY_PRESS":
         exit_cb()
         return
@@ -212,6 +268,8 @@ def handle_input(pin):
             return
         question_idx = 0
         score = 0
+        quiz_questions = random.sample(QUESTIONS[current_topic], min(15, len(QUESTIONS[current_topic])))
+        question_offset = 0
         state = "question"
         draw_question()
     elif state == "question":
@@ -221,16 +279,23 @@ def handle_input(pin):
             choice = 1
         elif pin == "KEY3":
             choice = 2
+        elif pin == "JOY_UP":
+            scroll_question(-1)
+            return
+        elif pin == "JOY_DOWN":
+            scroll_question(1)
+            return
         else:
             return
-        q = QUESTIONS[current_topic][question_idx]
+        q = quiz_questions[question_idx]
         correct = choice == q["a"]
         if correct:
             score += 1
         draw_feedback(correct)
         time.sleep(1)
         question_idx += 1
-        if question_idx >= len(QUESTIONS[current_topic]):
+        question_offset = 0
+        if question_idx >= len(quiz_questions):
             draw_final()
             time.sleep(3)
             exit_cb()
@@ -249,24 +314,50 @@ def draw_topics():
 
 
 def draw_question():
+    global question_line_h_small, question_line_h_medium, question_max_offset
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
-    q = QUESTIONS[current_topic][question_idx]
+    q = quiz_questions[question_idx]
     d.text(
         (5, 5),
-        f"{current_topic} {question_idx + 1}/{len(QUESTIONS[current_topic])}",
+        f"{current_topic} {question_idx + 1}/{len(quiz_questions)}",
         font=fonts[0],
         fill=(255, 255, 255),
     )
-    y = 20
-    for line in wrap_text(q["q"], fonts[1], 118, d):
+
+    dummy = Image.new("RGB", (1, 1))
+    dd = ImageDraw.Draw(dummy)
+    question_lines = wrap_text(q["q"], fonts[1], 118, dd)
+    question_line_h_medium = dd.textbbox((0, 0), "A", font=fonts[1])[3] + 2
+    option_line_h = dd.textbbox((0, 0), "A", font=fonts[0])[3] + 2
+    question_line_h_small = option_line_h
+
+    total_height = len(question_lines) * question_line_h_medium + option_line_h * len(q["opts"]) + 2
+    available = 128 - 20
+    question_max_offset = max(0, total_height - available)
+
+    y = 20 - question_offset
+    for line in question_lines:
         d.text((5, y), line, font=fonts[1], fill=(255, 255, 0))
-        y += 14
+        y += question_line_h_medium
     y += 2
     for idx, opt in enumerate(q["opts"], 1):
         d.text((5, y), f"{idx}={opt}", font=fonts[0], fill=(0, 255, 255))
-        y += 12
+        y += option_line_h
     thread_safe_display(img)
+
+
+def scroll_question(direction):
+    global question_offset
+    if question_max_offset <= 0:
+        return
+    step = min(question_line_h_small, question_line_h_medium)
+    question_offset += direction * step
+    if question_offset < 0:
+        question_offset = 0
+    if question_offset > question_max_offset:
+        question_offset = question_max_offset
+    draw_question()
 
 
 def draw_feedback(correct):
@@ -281,7 +372,7 @@ def draw_feedback(correct):
 def draw_final():
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
-    total = len(QUESTIONS[current_topic])
+    total = len(quiz_questions)
     d.text((25, 40), "Quiz Over", font=fonts[1], fill=(255, 255, 0))
     d.text((20, 70), f"Score: {score}/{total}", font=fonts[1], fill=(0, 255, 255))
     thread_safe_display(img)
