@@ -152,6 +152,10 @@ os.makedirs(IMAGES_DIR, exist_ok=True)
 gallery_images = []
 gallery_index = 0
 
+# --- Notes Directory ---
+NOTES_DIR = os.path.join(os.path.dirname(__file__), "notes")
+os.makedirs(NOTES_DIR, exist_ok=True)
+
 # --- IRC Chat ---
 IRC_SERVER = "192.168.0.81"
 IRC_PORT = 6667
@@ -187,9 +191,30 @@ def wrap_text(text, font, max_width, draw):
             if width <= max_width:
                 current = test
             else:
-                if current:
-                    lines.append(current)
-                current = word
+                if draw.textbbox((0, 0), word, font=font)[2] > max_width:
+                    if current:
+                        lines.append(current)
+                        current = ""
+                    remaining = word
+                    while remaining:
+                        prefix = ""
+                        for i in range(len(remaining), 0, -1):
+                            segment = remaining[:i]
+                            seg_width = draw.textbbox(
+                                (0, 0), segment + ("-" if i < len(remaining) else ""), font=font
+                            )[2]
+                            if seg_width <= max_width:
+                                prefix = segment
+                                break
+                        if not prefix:
+                            prefix = remaining[0]
+                            i = 1
+                        lines.append(prefix + ("-" if i < len(remaining) else ""))
+                        remaining = remaining[i:]
+                else:
+                    if current:
+                        lines.append(current)
+                    current = word
         if current:
             lines.append(current)
     return lines
@@ -452,9 +477,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "launch_codes":
             if pin_name in BUTTON_PINS:
                 handle_launch_input(pin_name)
-        elif menu_instance.current_screen == "typer":
+        elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
-                handle_typer_input(pin_name)
+                handle_notes_input(pin_name)
         elif menu_instance.current_screen == "image_gallery":
             if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
                 handle_gallery_input(pin_name)
@@ -1302,9 +1327,9 @@ def handle_launch_input(pin_name):
             return
     draw_launch_code()
 
-# --- Typer Program ---
+# --- Notes Program ---
 
-typer_text = ""
+notes_text = ""
 typer_row = 1  # Start with the A row
 typer_col = 0  # Column for A
 keyboard_state = 0  # 0=upper,1=lower,2=punct
@@ -1338,7 +1363,7 @@ IRC_KEY_LAYOUTS = [KEYBOARD_LOWER, KEYBOARD_UPPER, KEYBOARD_PUNCT]
 IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
 
 
-def draw_typer_screen():
+def draw_notes_screen():
     """Render the current text and onscreen keyboard."""
     img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
     draw = ImageDraw.Draw(img)
@@ -1346,7 +1371,7 @@ def draw_typer_screen():
     # Draw typed text in the top half
     max_width = DISPLAY_WIDTH - 10
     line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
-    lines = wrap_text(typer_text, font_medium, max_width, draw)
+    lines = wrap_text(notes_text, font_medium, max_width, draw)
     kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
     tips_height = 10  # Space at bottom for key tips
     max_lines = (kb_y - 10) // line_h
@@ -1381,29 +1406,29 @@ def draw_typer_screen():
             ty = y + (row_h - (bbox[3] - bbox[1])) // 2
             draw.text((tx, ty), ch, font=font_small, fill=text_color)
 
-    tips_text = "1=Shift 2=Delete 3=Back"
+    tips_text = "1=Shift 2=Delete 3=Save"
     draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips_text,
               font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
 
 
-def start_typer():
-    """Initialize the Typer program."""
-    global typer_text, typer_row, typer_col, keyboard_state, KEY_LAYOUT
+def start_notes():
+    """Initialize the Notes program."""
+    global notes_text, typer_row, typer_col, keyboard_state, KEY_LAYOUT
     stop_scrolling()
-    typer_text = ""
+    notes_text = ""
     typer_row = 1
     typer_col = 0
     keyboard_state = 0
     KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
-    menu_instance.current_screen = "typer"
-    draw_typer_screen()
+    menu_instance.current_screen = "notes"
+    draw_notes_screen()
 
 
-def handle_typer_input(pin_name):
-    """Handle joystick and button input for Typer."""
-    global typer_row, typer_col, typer_text, keyboard_state, KEY_LAYOUT
+def handle_notes_input(pin_name):
+    """Handle joystick and button input for Notes."""
+    global typer_row, typer_col, notes_text, keyboard_state, KEY_LAYOUT
     if pin_name == "JOY_LEFT" and typer_col > 0:
         typer_col -= 1
     elif pin_name == "JOY_RIGHT" and typer_col < len(KEY_LAYOUT[typer_row]) - 1:
@@ -1415,18 +1440,31 @@ def handle_typer_input(pin_name):
         typer_row += 1
         typer_col = min(typer_col, len(KEY_LAYOUT[typer_row]) - 1)
     elif pin_name == "JOY_PRESS":
-        typer_text += KEY_LAYOUT[typer_row][typer_col]
+        notes_text += KEY_LAYOUT[typer_row][typer_col]
     elif pin_name == "KEY1":
         keyboard_state = (keyboard_state + 1) % len(KEY_LAYOUTS)
         KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
         typer_row = min(typer_row, len(KEY_LAYOUT) - 1)
         typer_col = min(typer_col, len(KEY_LAYOUT[typer_row]) - 1)
     elif pin_name == "KEY2":
-        typer_text = typer_text[:-1]
+        notes_text = notes_text[:-1]
     elif pin_name == "KEY3":
+        save_note(notes_text)
         show_main_menu()
         return
-    draw_typer_screen()
+    draw_notes_screen()
+
+
+def save_note(text):
+    """Save the given text to the next note file."""
+    if not text:
+        return
+    pattern = re.compile(r"note(\d+)\.txt")
+    existing = [int(m.group(1)) for m in (pattern.match(f) for f in os.listdir(NOTES_DIR)) if m]
+    next_num = max(existing, default=0) + 1
+    filename = os.path.join(NOTES_DIR, f"note{next_num}.txt")
+    with open(filename, "w") as f:
+        f.write(text)
 
 def update_backlight():
     if backlight_pwm:
@@ -1553,7 +1591,7 @@ def show_main_menu():
     menu_instance.items = [
         "Update and Restart",
         "Games",
-        "Typer",
+        "Notes",
         "IRC Chat",
         "Image Gallery",
         "System Monitor",
@@ -1587,8 +1625,8 @@ def handle_menu_selection(selection):
         update_and_restart()
     elif selection == "Games":
         show_games_menu()
-    elif selection == "Typer":
-        start_typer()
+    elif selection == "Notes":
+        start_notes()
         return
     elif selection == "IRC Chat":
         start_chat()
