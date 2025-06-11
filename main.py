@@ -461,6 +461,15 @@ def button_event_handler(channel):
                 handle_games_selection(menu_instance.get_selected_item())
             elif pin_name == "KEY1":
                 show_main_menu()
+        elif menu_instance.current_screen == "utilities":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_utilities_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_main_menu()
         elif menu_instance.current_screen == "notes_menu":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -1897,6 +1906,36 @@ def handle_notes_menu_selection(selection):
     show_main_menu()
 
 
+def show_utilities_menu():
+    """Submenu containing system utilities."""
+    stop_scrolling()
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.items = [
+        "System Monitor",
+        "Network Info",
+        "Date & Time",
+        "Show Info",
+        "Back",
+    ]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "utilities"
+    menu_instance.draw()
+
+
+def handle_utilities_selection(selection):
+    if selection == "System Monitor":
+        run_system_monitor()
+    elif selection == "Network Info":
+        show_network_info()
+    elif selection == "Date & Time":
+        show_date_time()
+    elif selection == "Show Info":
+        show_info()
+    elif selection == "Back":
+        show_main_menu()
+
+
 def show_main_menu():
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
@@ -1906,11 +1945,8 @@ def show_main_menu():
         "Notes",
         "Chat",
         "Image Gallery",
-        "System Monitor",
-        "Network Info",
+        "Utilities",
         "Top Stories",
-        "Date & Time",
-        "Show Info",
         "Settings",
     ]
     menu_instance.selected_item = 0
@@ -1956,17 +1992,11 @@ def handle_menu_selection(selection):
     elif selection == "Image Gallery":
         start_image_gallery()
         return
-    elif selection == "System Monitor":
-        run_system_monitor()
-    elif selection == "Network Info":
-        show_network_info()
+    elif selection == "Utilities":
+        show_utilities_menu()
     elif selection == "Top Stories":
         show_top_stories()
         return
-    elif selection == "Date & Time":
-        show_date_time()
-    elif selection == "Show Info":
-        show_info()
     elif selection == "Settings":
         show_settings_menu()
     
