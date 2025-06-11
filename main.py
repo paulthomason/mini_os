@@ -873,8 +873,14 @@ def connect_bluetooth_device(device):
         subprocess.run(["bluetoothctl", "connect", addr], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         menu_instance.display_message_screen("Bluetooth", f"Connected to {device}", delay=3)
     except subprocess.CalledProcessError as e:
-        err = e.stderr.decode().strip() if e.stderr else "Connection failed"
-        menu_instance.display_message_screen("Bluetooth", err or "Connection failed", delay=3)
+        stdout = e.stdout.decode().strip() if e.stdout else ""
+        stderr = e.stderr.decode().strip() if e.stderr else ""
+        details = "\n".join(filter(None, [stdout, stderr])).strip()
+        if not details:
+            details = "Failed to connect. Ensure the device is in pairing mode and in range."
+        else:
+            details = f"Failed to connect to {device}.\n{details}"
+        show_scroll_message("Bluetooth Error", details)
 
 
 def connect_to_wifi(ssid):
