@@ -1262,6 +1262,25 @@ def show_network_info(duration=10):
 
     menu_instance.clear_display()
 
+def start_web_server():
+    """Start the lightweight Flask web server."""
+    try:
+        ip_output = subprocess.check_output(["hostname", "-I"]).decode().strip()
+        ip_addr = ip_output.split()[0] if ip_output else "localhost"
+    except Exception:
+        ip_addr = "localhost"
+
+    try:
+        from utilities import web_server
+        threading.Thread(target=web_server.run, daemon=True).start()
+        menu_instance.display_message_screen(
+            "Web Server", f"Running on http://{ip_addr}:8000", delay=3
+        )
+    except Exception as e:
+        menu_instance.display_message_screen(
+            "Web Server", f"Failed to start: {e}", delay=3
+        )
+
 # --- Reaction Game ---
 
 def draw_game_screen(prompt, time_left=None):
@@ -1915,6 +1934,7 @@ def show_utilities_menu():
         "Network Info",
         "Date & Time",
         "Show Info",
+        "Web Server",
         "Back",
     ]
     menu_instance.selected_item = 0
@@ -1932,6 +1952,8 @@ def handle_utilities_selection(selection):
         show_date_time()
     elif selection == "Show Info":
         show_info()
+    elif selection == "Web Server":
+        start_web_server()
     elif selection == "Back":
         show_main_menu()
 
