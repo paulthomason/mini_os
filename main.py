@@ -97,6 +97,55 @@ brightness_level = 100  # Percentage 0-100
 backlight_pwm = None
 
 
+def show_splash_screen(duration=1):
+    """Display a colorful ASCII art splash screen"""
+    ascii_art = [
+        "           __          __                       ",
+        "  ___ ___ /\\_\\    ___ /\\_\\        ___     ____  ",
+        "/' __` __`\\/\\ \\ /' _ `\\/\\ \\      / __`\\  /',__\\ ",
+        "/\\ \\/\\ \\/\\ \\ \\ /\\ \\/\\ \\ \\ \\    /\\ \\L\\ \\/\\__, `\\",
+        "\\ \\_\\ \\_\\ \\_\\ \\_\\ \\_\\ \\_\\ \\_\\   \\ \\____/\\/\\____/",
+        " \\/_/\\/_/\\/_/\\/_/\\/_/\\/_/\\/_/    \\/___/  \\/___/ ",
+    ]
+
+    splash_font = ImageFont.truetype(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 16
+    )
+    char_w = splash_font.getbbox("A")[2]
+    char_h = splash_font.getbbox("A")[3]
+    img_w = char_w * max(len(line) for line in ascii_art)
+    img_h = char_h * len(ascii_art)
+
+    img = Image.new("RGB", (img_w, img_h), "black")
+    draw = ImageDraw.Draw(img)
+    colors = [
+        (255, 0, 0),
+        (0, 255, 0),
+        (0, 0, 255),
+        (255, 255, 0),
+        (255, 0, 255),
+        (0, 255, 255),
+    ]
+    for y, line in enumerate(ascii_art):
+        for x, ch in enumerate(line):
+            color = colors[(x + y) % len(colors)]
+            draw.text((x * char_w + 1, y * char_h + 1), ch, font=splash_font, fill=(0, 0, 0))
+            draw.text((x * char_w, y * char_h), ch, font=splash_font, fill=color)
+
+    if img_w > DISPLAY_WIDTH:
+        scale = DISPLAY_WIDTH / float(img_w)
+        new_h = int(img_h * scale)
+        img = img.resize((DISPLAY_WIDTH, new_h), Image.NEAREST)
+    else:
+        new_h = img_h
+
+    final_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), "black")
+    final_img.paste(img, ((DISPLAY_WIDTH - img.width) // 2, (DISPLAY_HEIGHT - new_h) // 2))
+    device.display(final_img)
+    time.sleep(duration)
+    device.display(Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), "black"))
+
+
 def wrap_text(text, font, max_width, draw):
     """Return a list of lines wrapped to fit within max_width."""
     lines = []
@@ -748,6 +797,7 @@ def handle_menu_selection(selection):
 
 # --- Main Execution ---
 if __name__ == "__main__":
+    show_splash_screen()
     menu_instance = Menu([])
     show_main_menu()
 
