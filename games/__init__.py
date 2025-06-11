@@ -1,4 +1,4 @@
-from . import snake, tetris, rps, space_invaders, vet_adventure, axe
+from . import snake, tetris, rps, space_invaders, vet_adventure, axe, trivia
 __all__ = [
     "snake",
     "tetris",
@@ -6,4 +6,5 @@ __all__ = [
     "space_invaders",
     "vet_adventure",
     "axe",
+    "trivia",
 ]
