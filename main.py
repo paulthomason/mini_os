@@ -266,6 +266,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "button_game":
             if pin_name in BUTTON_NAMES:
                 handle_game_input(pin_name)
+        elif menu_instance.current_screen == "launch_codes":
+            if pin_name in BUTTON_PINS:
+                handle_launch_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -572,6 +575,87 @@ def handle_game_input(pin_name):
         menu_instance.display_message_screen("Wrong Button!", f"Score: {game_score}", delay=2)
         show_main_menu()
 
+# --- Launch Codes Game ---
+
+launch_round = 0
+launch_sequence = ""
+launch_input = ""
+TOTAL_LAUNCH_ROUNDS = 5
+
+
+def generate_launch_sequence():
+    """Generate a new code sequence based on the current round."""
+    global launch_sequence, launch_input
+    length = launch_round + 2
+    launch_sequence = "".join(str(random.randint(1, 3)) for _ in range(length))
+    launch_input = ""
+
+
+def draw_launch_code(show_sequence=False):
+    """Display either the code to memorize or the input prompt."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    draw.text(
+        (5, 5),
+        f"Round {launch_round}/{TOTAL_LAUNCH_ROUNDS}",
+        font=font_medium,
+        fill=(255, 255, 255),
+    )
+    if show_sequence:
+        draw.text((5, 30), "Code:", font=font_large, fill=(255, 255, 0))
+        draw.text((5, 55), " ".join(launch_sequence), font=font_large, fill=(0, 255, 0))
+    else:
+        draw.text((5, 30), "Enter:", font=font_large, fill=(255, 255, 0))
+        draw.text((5, 55), launch_input, font=font_large, fill=(0, 255, 0))
+        draw.text((5, 90), "Up=Submit Down=Clear", font=font_small, fill=(255, 255, 255))
+    device.display(img)
+
+
+def start_launch_codes(rounds=5):
+    """Initialize the Launch Codes game."""
+    global launch_round, TOTAL_LAUNCH_ROUNDS
+    stop_scrolling()
+    launch_round = 1
+    TOTAL_LAUNCH_ROUNDS = rounds
+    menu_instance.current_screen = "launch_codes"
+    generate_launch_sequence()
+    draw_launch_code(show_sequence=True)
+    time.sleep(2)
+    draw_launch_code()
+
+
+def handle_launch_input(pin_name):
+    """Process button and joystick input for the Launch Codes game."""
+    global launch_round, launch_input
+    if pin_name == "KEY1":
+        launch_input += "1"
+    elif pin_name == "KEY2":
+        launch_input += "2"
+    elif pin_name == "KEY3":
+        launch_input += "3"
+    elif pin_name == "JOY_DOWN":
+        launch_input = ""
+    elif pin_name == "JOY_LEFT":
+        draw_launch_code(show_sequence=True)
+        time.sleep(2)
+    elif pin_name == "JOY_UP":
+        if launch_input == launch_sequence:
+            if launch_round >= TOTAL_LAUNCH_ROUNDS:
+                menu_instance.display_message_screen("Success", "Bomb Defused!", delay=3)
+                show_main_menu()
+                return
+            launch_round += 1
+            generate_launch_sequence()
+            draw_launch_code(show_sequence=True)
+            time.sleep(2)
+            draw_launch_code()
+            return
+        else:
+            menu_instance.display_message_screen("Failure", "Wrong Code", delay=3)
+            show_main_menu()
+            return
+    draw_launch_code()
+
 def update_backlight():
     if backlight_pwm:
         backlight_pwm.ChangeDutyCycle(brightness_level)
@@ -603,6 +687,7 @@ def show_main_menu():
         "Run Program 1",
         "Run Program 2",
         "Button Game",
+        "Launch Codes",
         "System Monitor",
         "Network Info",
         "Date & Time",
@@ -633,6 +718,9 @@ def handle_menu_selection(selection):
         run_program2()
     elif selection == "Button Game":
         start_button_game()
+        return
+    elif selection == "Launch Codes":
+        start_launch_codes()
         return
     elif selection == "System Monitor":
         run_system_monitor()
