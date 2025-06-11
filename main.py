@@ -361,6 +361,14 @@ def run_git_pull():
     menu_instance.clear_display()
 
 
+def update_and_restart():
+    """Update the code then restart the mini_os service."""
+    run_git_pull()
+    menu_instance.display_message_screen("System", "Restarting Mini-OS...", delay=2)
+    subprocess.run(["sudo", "systemctl", "restart", "mini_os.service"], check=True)
+    exit()
+
+
 def start_image_gallery():
     """Load images from the images directory and display the first one."""
     global gallery_images, gallery_index
@@ -955,6 +963,7 @@ def show_main_menu():
     menu_instance.max_visible_items = 6
     menu_instance.items = [
         "Update Mini-OS",
+        "Update and Restart",
         "Button Game",
         "Launch Codes",
         "Typer",
@@ -988,6 +997,8 @@ def handle_menu_selection(selection):
     print(f"Selected: {selection}") # This output goes to journalctl
     if selection == "Update Mini-OS":
         run_git_pull()
+    elif selection == "Update and Restart":
+        update_and_restart()
     elif selection == "Button Game":
         start_button_game()
         return

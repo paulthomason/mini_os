@@ -2,7 +2,7 @@
 
 This repository contains a simple menu-based interface for a Raspberry Pi with an ST7735-based LCD display.
 
-The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick. It also provides menu options to briefly display the current date and time, a simple system monitor showing CPU temperature, load and memory usage, and a network info screen showing the current IP address and Wi-Fi SSID. Shutdown, Reboot, and Soft Reboot options are available for safely powering off, restarting the Pi, or just restarting the Mini OS service. An "Update Mini-OS" entry pulls the latest code with `git pull`.
+The interface now includes a basic Settings screen where you can adjust the LCD backlight brightness using the joystick. It also provides menu options to briefly display the current date and time, a simple system monitor showing CPU temperature, load and memory usage, and a network info screen showing the current IP address and Wi-Fi SSID. Shutdown, Reboot, and Soft Reboot options are available for safely powering off, restarting the Pi, or just restarting the Mini OS service. An "Update Mini-OS" entry pulls the latest code with `git pull`. A new "Update and Restart" option pulls the code and restarts the service so the update takes effect.
 
 Two small games are included: a reaction-based **Button Game** and a memory challenge called **Launch Codes**. Both can be started from the main menu and make use of the three buttons and joystick directions for input.
 
