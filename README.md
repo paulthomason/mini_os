@@ -85,6 +85,17 @@ fail unless the server was started with the necessary privileges. Exposing this
 web shell on a network lets anyone execute commands on your Pi, so only enable
 it on trusted networks or behind a firewall.
 
+### Interactive Shell
+
+Opening `/shell` in a browser now provides a live Bash prompt. Commands are
+executed in a persistent shell so each one can build on the previous. If a
+command asks for a password (for example when using `sudo`), a password field
+will appear so you can respond directly in the browser.
+
+**Security Warning:** anyone who can access this page can run arbitrary commands
+on your Pi. Only enable the web server on trusted networks and consider adding
+additional authentication if it is exposed beyond localhost.
+
 ## Bluetooth
 
 From **Settings** choose **Bluetooth** to scan for nearby devices. Select your

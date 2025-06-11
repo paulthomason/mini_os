@@ -6,6 +6,7 @@ import json
 import threading
 import importlib
 import subprocess
+import pexpect
 from flask import Flask, request, redirect
 
 app = Flask(__name__)
@@ -18,6 +19,9 @@ NYT_API_KEY = None
 CHAT_LOG = []
 SHELL_HISTORY = []
 SERVER_RUNNING = False
+SHELL_PROC = None
+WAITING_FOR_PASSWORD = False
+_WAITING_CMD = ""
 
 
 def load_nyt_api_key():
@@ -161,25 +165,37 @@ def chat():
 @app.route("/shell", methods=["GET", "POST"])
 def shell():
     """Simple interactive shell."""
+    global WAITING_FOR_PASSWORD, _WAITING_CMD
     output = ""
     if request.method == "POST":
+        password = request.form.get("password", "")
         cmd = request.form.get("cmd", "").strip()
+        if WAITING_FOR_PASSWORD:
+            SHELL_PROC.sendline(password)
+            SHELL_PROC.expect("__CMD_DONE__", timeout=30)
+            output = SHELL_PROC.before
+            WAITING_FOR_PASSWORD = False
+            SHELL_HISTORY.append((_WAITING_CMD, output))
+            _WAITING_CMD = ""
+            return redirect("/shell")
         if cmd:
-            try:
-                output = subprocess.check_output(
-                    cmd, shell=True, stderr=subprocess.STDOUT, timeout=10
-                ).decode()
-            except subprocess.CalledProcessError as e:
-                output = e.output.decode() if e.output else str(e)
-            except Exception as e:
-                output = str(e)
-            SHELL_HISTORY.append((cmd, output))
-        return redirect("/shell")
+            SHELL_PROC.sendline(f"{cmd}; echo __CMD_DONE__")
+            idx = SHELL_PROC.expect(["sudo password:", "__CMD_DONE__"], timeout=30)
+            output = SHELL_PROC.before + SHELL_PROC.after.replace("__CMD_DONE__", "")
+            if idx == 0:
+                WAITING_FOR_PASSWORD = True
+                _WAITING_CMD = cmd
+                SHELL_HISTORY.append((cmd, output))
+            else:
+                SHELL_HISTORY.append((cmd, output))
+            return redirect("/shell")
 
     html = ["<h1>Shell</h1>"]
-    html.append(
-        "<form method='post'><input name='cmd'><button type='submit'>Run</button></form>"
-    )
+    html.append("<form method='post'>")
+    html.append("<input name='cmd'>")
+    if WAITING_FOR_PASSWORD:
+        html.append("<input name='password' type='password' placeholder='sudo password'>")
+    html.append("<button type='submit'>Run</button></form>")
     for cmd, out in SHELL_HISTORY[-10:]:
         html.append(f"<h3>$ {cmd}</h3><pre>{out}</pre>")
     html.append("<p><a href='/'>Back</a></p>")
@@ -213,10 +229,11 @@ def top_stories():
 
 
 def run(host="0.0.0.0", port=8000):
-    global SERVER_RUNNING
+    global SERVER_RUNNING, SHELL_PROC
     if SERVER_RUNNING:
         return
     SERVER_RUNNING = True
+    SHELL_PROC = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
     load_nyt_api_key()
     app.run(host=host, port=port, threaded=True, use_reloader=False)
 
