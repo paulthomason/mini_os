@@ -1333,6 +1333,8 @@ notes_text = ""
 typer_row = 1  # Start with the A row
 typer_col = 0  # Column for A
 keyboard_state = 0  # 0=upper,1=lower,2=punct
+# Automatically switch to lowercase after the first typed letter
+notes_auto_lower = False
 
 KEYBOARD_UPPER = [
     list("QWERTYUIOP"),
@@ -1415,20 +1417,22 @@ def draw_notes_screen():
 
 def start_notes():
     """Initialize the Notes program."""
-    global notes_text, typer_row, typer_col, keyboard_state, KEY_LAYOUT
+    global notes_text, typer_row, typer_col, keyboard_state, KEY_LAYOUT, notes_auto_lower
     stop_scrolling()
     notes_text = ""
     typer_row = 1
     typer_col = 0
     keyboard_state = 0
     KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
+    # Enable auto switch to lowercase after the first typed letter
+    notes_auto_lower = True
     menu_instance.current_screen = "notes"
     draw_notes_screen()
 
 
 def handle_notes_input(pin_name):
     """Handle joystick and button input for Notes."""
-    global typer_row, typer_col, notes_text, keyboard_state, KEY_LAYOUT
+    global typer_row, typer_col, notes_text, keyboard_state, KEY_LAYOUT, notes_auto_lower
     if pin_name == "JOY_LEFT" and typer_col > 0:
         typer_col -= 1
     elif pin_name == "JOY_RIGHT" and typer_col < len(KEY_LAYOUT[typer_row]) - 1:
@@ -1440,7 +1444,15 @@ def handle_notes_input(pin_name):
         typer_row += 1
         typer_col = min(typer_col, len(KEY_LAYOUT[typer_row]) - 1)
     elif pin_name == "JOY_PRESS":
-        notes_text += KEY_LAYOUT[typer_row][typer_col]
+        ch = KEY_LAYOUT[typer_row][typer_col]
+        notes_text += ch
+        # After the first typed letter in uppercase, switch to lowercase
+        if notes_auto_lower and keyboard_state == 0 and ch.isalpha():
+            keyboard_state = 1
+            KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
+            typer_row = min(typer_row, len(KEY_LAYOUT) - 1)
+            typer_col = min(typer_col, len(KEY_LAYOUT[typer_row]) - 1)
+            notes_auto_lower = False
     elif pin_name == "KEY1":
         keyboard_state = (keyboard_state + 1) % len(KEY_LAYOUTS)
         KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
