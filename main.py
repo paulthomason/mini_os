@@ -1383,6 +1383,7 @@ def handle_menu_selection(selection):
         show_network_info()
     elif selection == "Top Stories":
         show_top_stories()
+        return
     elif selection == "Date & Time":
         show_date_time()
     elif selection == "Show Info":
