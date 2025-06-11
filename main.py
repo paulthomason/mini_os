@@ -32,7 +32,7 @@ BL_PIN = 24   # Backlight pin, GPIO 24
 
 # SPI communication setup (port=0, device=0 corresponds to SPI0 CE0/GPIO 8)
 # Speed can be up to 60MHz for ST7735S 
-serial_interface = spi(port=0, device=0, cs_high=False,
+serial_interface = spi(port=0, device=0,
                        gpio_DC=DC_PIN, gpio_RST=RST_PIN,
                        speed_hz=16000000) # 16MHz is a good speed. Max is 60MHz.
 
