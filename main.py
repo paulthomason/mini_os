@@ -79,7 +79,7 @@ BUTTON_NAMES = {
     "JOY_LEFT": "Joystick Left",
     "JOY_RIGHT": "Joystick Right",
     "JOY_PRESS": "Joystick Press",
-    "KEY1": "Button 1",
+    # KEY1 reserved for exiting the reaction game
     "KEY2": "Button 2",
     "KEY3": "Button 3",
 }
@@ -577,6 +577,8 @@ def button_event_handler(channel):
                 scroll_shell_output(1)
             elif pin_name == "KEY3":
                 start_shell()
+            elif pin_name == "KEY1":
+                show_main_menu()
         elif menu_instance.current_screen == "image_gallery":
             if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
                 handle_gallery_input(pin_name)
@@ -752,7 +754,7 @@ def draw_story_detail(index):
             draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
             y += story_line_h
         # Only show the back hint; opening a link isn't supported here
-        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+        draw.text((5, DISPLAY_HEIGHT - 10), "1=Menu 3=Back", font=font_small, fill=(0, 255, 255))
         device.display(img)
 
     story_render = render
@@ -986,7 +988,7 @@ def show_scroll_message(title, message):
         for line in message_lines:
             draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
             y += message_line_h
-        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+        draw.text((5, DISPLAY_HEIGHT - 10), "1=Menu 3=Back", font=font_small, fill=(0, 255, 255))
         thread_safe_display(img)
 
     message_render = render
@@ -1227,6 +1229,8 @@ def run_system_monitor(duration=10):
     """Display CPU temperature, load and memory usage for a few seconds."""
     end_time = time.time() + duration
     while time.time() < end_time:
+        if button_states.get("KEY3"):
+            break
         # CPU temperature using vcgencmd if available
         try:
             output = subprocess.check_output(["vcgencmd", "measure_temp"]).decode()
@@ -1283,9 +1287,11 @@ def run_system_monitor(duration=10):
             draw.text((5, 55), "Freq: N/A", font=font_medium, fill=(255, 255, 255))
         draw.text((5, 70), f"Mem: {mem_str}", font=font_medium, fill=(255, 255, 255))
         draw.text((5, 85), f"Disk: {disk_str}", font=font_medium, fill=(255, 255, 255))
+        draw.text((5, DISPLAY_HEIGHT - 10), "1=Menu 3=Back", font=font_small, fill=(0, 255, 255))
         thread_safe_display(img)
         time.sleep(1)
     menu_instance.clear_display()
+    show_utilities_menu()
 
 def show_info():
     menu_instance.display_message_screen("System Info", "Raspberry Pi Mini-OS\nVersion 1.0\nST7735S Display", delay=4)
@@ -1295,6 +1301,8 @@ def show_date_time(duration=10):
     """Display the current date and time for a few seconds."""
     end_time = time.time() + duration
     while time.time() < end_time:
+        if button_states.get("KEY3"):
+            break
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
         draw = ImageDraw.Draw(img)
@@ -1306,9 +1314,11 @@ def show_date_time(duration=10):
         for line in lines:
             draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
             y += line_height + 2
+        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
         thread_safe_display(img)
         time.sleep(1)
     menu_instance.clear_display()
+    show_utilities_menu()
 
 def show_network_info(duration=10):
     """Display basic network information such as IP address and Wi-Fi SSID."""
@@ -1326,6 +1336,8 @@ def show_network_info(duration=10):
 
     end_time = time.time() + duration
     while time.time() < end_time:
+        if button_states.get("KEY3"):
+            break
         img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
         draw = ImageDraw.Draw(img)
         draw.text((5, 5), "Network Info", font=font_large, fill=(255, 255, 0))
@@ -1337,10 +1349,12 @@ def show_network_info(duration=10):
         for line in wrap_text(f"SSID: {ssid}", font_small, max_width, draw):
             draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
             y += draw.textbbox((0, 0), line, font=font_small)[3] + 2
+        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
         thread_safe_display(img)
         time.sleep(1)
 
     menu_instance.clear_display()
+    show_utilities_menu()
 
 def start_web_server():
     """Start the lightweight Flask web server."""
@@ -1356,10 +1370,12 @@ def start_web_server():
         menu_instance.display_message_screen(
             "Web Server", f"Running on http://{ip_addr}:8000", delay=3
         )
+        show_utilities_menu()
     except Exception as e:
         menu_instance.display_message_screen(
             "Web Server", f"Failed to start: {e}", delay=3
         )
+        show_utilities_menu()
 
 # --- Reaction Game ---
 
@@ -1382,6 +1398,7 @@ def draw_game_screen(prompt, time_left=None):
         draw.text((5, y), line, font=font_large, fill=(0, 255, 0))
         y += line_height
 
+    draw.text((5, DISPLAY_HEIGHT - 10), "1=Quit", font=font_small, fill=(0, 255, 255))
     thread_safe_display(img)
 
 
@@ -1449,6 +1466,9 @@ def handle_game_input(pin_name):
     """Process button presses for the reaction game."""
     global game_round, game_score
     stop_timer()
+    if pin_name == "KEY1":
+        show_main_menu()
+        return
     if pin_name == game_prompt:
         game_score += 1
         game_round += 1
@@ -1486,10 +1506,12 @@ def draw_launch_code(show_sequence=False):
     if show_sequence:
         draw.text((5, 30), "Code:", font=font_large, fill=(255, 255, 0))
         draw.text((5, 55), " ".join(launch_sequence), font=font_large, fill=(0, 255, 0))
+        draw.text((5, DISPLAY_HEIGHT - 10), "Press=Quit", font=font_small, fill=(0, 255, 255))
     else:
         draw.text((5, 30), "Enter:", font=font_large, fill=(255, 255, 0))
         draw.text((5, 55), launch_input, font=font_large, fill=(0, 255, 0))
         draw.text((5, 90), "Up=Submit Down=Clear", font=font_small, fill=(255, 255, 255))
+        draw.text((5, DISPLAY_HEIGHT - 10), "Press=Quit", font=font_small, fill=(0, 255, 255))
     thread_safe_display(img)
 
 
@@ -1509,6 +1531,9 @@ def start_launch_codes(rounds=5):
 def handle_launch_input(pin_name):
     """Process button and joystick input for the Launch Codes game."""
     global launch_round, launch_input
+    if pin_name == "JOY_PRESS":
+        show_main_menu()
+        return
     if pin_name == "KEY1":
         launch_input += "1"
     elif pin_name == "KEY2":
@@ -1931,7 +1956,7 @@ def draw_shell_screen():
             ty = yk + (row_h - (bbox[3] - bbox[1])) // 2
             draw.text((tx, ty), ch, font=font_small, fill=text_color)
 
-    tips = "1=Shift 2=Del 3=Run"
+    tips = "1=Shift 2=Del 3=Run/Exit"
     draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips, font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
@@ -1972,7 +1997,7 @@ def show_shell_output(cmd, output):
         for line in shell_output_lines:
             draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
             y += shell_output_line_h
-        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+        draw.text((5, DISPLAY_HEIGHT - 10), "1=Menu 3=Back", font=font_small, fill=(0, 255, 255))
         thread_safe_display(img)
 
     shell_output_render = render
@@ -2029,7 +2054,10 @@ def handle_shell_input(pin_name):
     elif pin_name == "KEY2":
         shell_text = shell_text[:-1]
     elif pin_name == "KEY3":
-        run_shell_command(shell_text)
+        if shell_text.strip():
+            run_shell_command(shell_text)
+        else:
+            show_main_menu()
         return
     draw_shell_screen()
 
