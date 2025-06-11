@@ -69,6 +69,22 @@ a simple browser based interface for viewing and updating settings. From the
 `/settings` page you can change the display brightness, select a font and adjust
 the text size. Wi-Fi can also be toggled on or off directly from the browser.
 
+The server requires the Python packages listed in `requirements.txt`
+(including **Flask** and **pexpect**). Install them with `pip3 install -r
+requirements.txt` and then either select **Web Server** from the Utilities menu
+or run `python3 utilities/web_server.py` manually. Once running, visit
+`http://<Pi-IP>:8000` in your browser.
+
+### Shell (`/shell`)
+
+The web interface provides a simple shell at `/shell`. Enter a command and press
+**Run** to execute it; output from the last few commands appears below the form.
+Commands run as the same user that started the server. If a command uses `sudo`
+and a password is required, the web page cannot supply it, so the command will
+fail unless the server was started with the necessary privileges. Exposing this
+web shell on a network lets anyone execute commands on your Pi, so only enable
+it on trusted networks or behind a firewall.
+
 ### Interactive Shell
 
 Opening `/shell` in a browser now provides a live Bash prompt. Commands are
