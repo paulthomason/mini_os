@@ -12,7 +12,7 @@ import re
 import webbrowser
 import shutil
 import socket
-from games import snake, tetris, rps, space_invaders, vet_adventure, axe
+from games import snake, tetris, rps, space_invaders, vet_adventure, axe, trivia
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -551,6 +551,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "axe":
             if pin_name in BUTTON_PINS:
                 handle_axe_input(pin_name)
+        elif menu_instance.current_screen == "trivia":
+            if pin_name in BUTTON_PINS:
+                handle_trivia_input(pin_name)
         elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
                 handle_notes_input(pin_name)
@@ -1537,6 +1540,18 @@ def start_axe():
 def handle_axe_input(pin_name):
     axe.handle_input(pin_name)
 
+# --- Trivia Game ---
+
+def start_trivia():
+    stop_scrolling()
+    trivia.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "trivia"
+    trivia.start()
+
+
+def handle_trivia_input(pin_name):
+    trivia.handle_input(pin_name)
+
 # --- Notes Program ---
 
 notes_text = ""
@@ -1907,6 +1922,7 @@ def show_games_menu():
         "Space Invaders",
         "Vet Adventure",
         "Axe",
+        "Trivia",
         "Back",
     ]
     menu_instance.selected_item = 0
@@ -1939,6 +1955,9 @@ def handle_games_selection(selection):
         return
     elif selection == "Axe":
         start_axe()
+        return
+    elif selection == "Trivia":
+        start_trivia()
         return
     elif selection == "Back":
         show_main_menu()
