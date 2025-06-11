@@ -8,6 +8,7 @@ import os
 import random
 import threading
 import requests
+import re
 import webbrowser
 import shutil
 
@@ -548,19 +549,39 @@ def open_current_story():
 def show_wifi_networks():
     """Scan for Wi-Fi networks and display them in a menu."""
     stop_scrolling()
-    networks = []
-    try:
-        output = subprocess.check_output([
-            "nmcli",
-            "-t",
-            "-f",
-            "ssid",
-            "dev",
-            "wifi",
-        ]).decode()
-        networks = [line for line in output.splitlines() if line]
-    except Exception:
-        networks = []
+
+    def scan_networks():
+        nets = []
+        try:
+            # Trigger a fresh scan then list SSIDs with NetworkManager
+            subprocess.run([
+                "nmcli",
+                "device",
+                "wifi",
+                "rescan",
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            output = subprocess.check_output([
+                "nmcli",
+                "-t",
+                "-f",
+                "ssid",
+                "device",
+                "wifi",
+                "list",
+            ], stderr=subprocess.DEVNULL).decode()
+            nets = [line for line in output.splitlines() if line]
+        except Exception:
+            # Fallback to iwlist if nmcli isn't available
+            try:
+                output = subprocess.check_output(
+                    ["iwlist", "wlan0", "scan"], stderr=subprocess.DEVNULL
+                ).decode()
+                nets = re.findall(r'ESSID:"([^"]+)"', output)
+            except Exception:
+                nets = []
+        return sorted(set(nets))
+
+    networks = scan_networks()
 
     if not networks:
         networks = ["No Networks Found"]
