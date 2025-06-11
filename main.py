@@ -11,6 +11,7 @@ import requests
 import re
 import webbrowser
 import shutil
+import socket
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -150,6 +151,15 @@ IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
 os.makedirs(IMAGES_DIR, exist_ok=True)
 gallery_images = []
 gallery_index = 0
+
+# --- IRC Chat ---
+IRC_SERVER = "petserver.local"
+IRC_PORT = 6667
+IRC_CHANNEL = "#pet"
+IRC_NICK = "birdie"
+irc_socket = None
+irc_thread = None
+chat_messages = []
 
 
 def wrap_text(text, font, max_width, draw):
@@ -432,6 +442,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "image_gallery":
             if pin_name in ["JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
                 handle_gallery_input(pin_name)
+        elif menu_instance.current_screen == "irc_chat":
+            if pin_name == "KEY3":
+                show_main_menu()
     else: # Button released
         button_states[pin_name] = False
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
@@ -690,6 +703,95 @@ def connect_to_wifi(ssid):
         menu_instance.display_message_screen("Wi-Fi", f"Failed to connect to {ssid}", delay=3)
 
     show_wifi_networks()
+
+# --- IRC Chat Functions ---
+
+def connect_irc():
+    """Connect to the IRC server and start listener thread."""
+    global irc_socket, irc_thread
+    try:
+        irc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        irc_socket.connect((IRC_SERVER, IRC_PORT))
+        irc_socket.sendall(f"NICK {IRC_NICK}\r\n".encode())
+        irc_socket.sendall(f"USER {IRC_NICK} 0 * :{IRC_NICK}\r\n".encode())
+        irc_socket.sendall(f"JOIN {IRC_CHANNEL}\r\n".encode())
+    except Exception as e:
+        print(f"IRC connection failed: {e}")
+        irc_socket = None
+        return
+
+    def listen():
+        buffer = ""
+        while True:
+            try:
+                data = irc_socket.recv(4096)
+                if not data:
+                    break
+                buffer += data.decode(errors="ignore")
+                while "\r\n" in buffer:
+                    line, buffer = buffer.split("\r\n", 1)
+                    handle_irc_line(line)
+            except Exception as e:
+                print(f"IRC listener error: {e}")
+                break
+
+    irc_thread = threading.Thread(target=listen, daemon=True)
+    irc_thread.start()
+
+
+def handle_irc_line(line):
+    """Process a single line received from IRC."""
+    if line.startswith("PING"):
+        token = line.split(":", 1)[1] if ":" in line else ""
+        try:
+            irc_socket.sendall(f"PONG :{token}\r\n".encode())
+        except Exception as e:
+            print(f"Failed to send PONG: {e}")
+        return
+
+    parts = line.split()
+    if len(parts) >= 4 and parts[1] == "PRIVMSG" and parts[2] == IRC_CHANNEL:
+        prefix = parts[0]
+        message = line.split(" :", 1)[1] if " :" in line else ""
+        nick = prefix.split("!")[0][1:] if prefix.startswith(":") else prefix
+        chat_messages.append(f"{nick}> {message}")
+        if len(chat_messages) > 100:
+            chat_messages.pop(0)
+        if menu_instance and menu_instance.current_screen == "irc_chat":
+            draw_chat_screen()
+
+
+def draw_chat_screen():
+    """Render the IRC chat screen."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    draw.text((5, 5), "IRC Chat", font=font_large, fill=(255, 255, 0))
+
+    max_width = DISPLAY_WIDTH - 10
+    line_h = draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    available_h = DISPLAY_HEIGHT - 35
+
+    lines = []
+    for msg in chat_messages:
+        lines.extend(wrap_text(msg, font_small, max_width, draw))
+
+    max_lines = available_h // line_h
+    visible = lines[-max_lines:]
+
+    y = 25
+    for line in visible:
+        draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+        y += line_h
+
+    draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+    thread_safe_display(img)
+
+
+def start_chat():
+    """Enter the IRC chat view."""
+    stop_scrolling()
+    menu_instance.current_screen = "irc_chat"
+    draw_chat_screen()
 
 def run_system_monitor(duration=10):
     """Display CPU temperature, load and memory usage for a few seconds."""
@@ -1235,6 +1337,7 @@ def show_main_menu():
         "Update and Restart",
         "Games",
         "Typer",
+        "IRC Chat",
         "Image Gallery",
         "System Monitor",
         "Network Info",
@@ -1267,6 +1370,9 @@ def handle_menu_selection(selection):
         show_games_menu()
     elif selection == "Typer":
         start_typer()
+        return
+    elif selection == "IRC Chat":
+        start_chat()
         return
     elif selection == "Image Gallery":
         start_image_gallery()
@@ -1306,6 +1412,7 @@ def handle_menu_selection(selection):
 # --- Main Execution ---
 if __name__ == "__main__":
     menu_instance = Menu([])
+    connect_irc()
     show_main_menu()
 
     # Attach event detection to all desired pins after the menu is ready
