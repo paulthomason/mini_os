@@ -110,7 +110,8 @@ see exactly why a device did not connect. Each failure is also saved in the
 `notes` directory as `btfail1.txt`, `btfail2.txt` and so on for later review.
 
 The Bluetooth device list now uses a smaller font so long names fit on the
-screen without running off the edge.
+screen without running off the edge. Device names are displayed before their
+Bluetooth addresses for quicker identification.
 
 The Utilities menu also includes **Shell**, which opens the on-screen keyboard
 so you can type a command and execute it on the Pi. Press **KEY1** to cycle the
