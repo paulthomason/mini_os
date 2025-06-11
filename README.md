@@ -77,6 +77,10 @@ connection or **KEY2** to pair and connect (useful for phones that require
 confirming a passkey such as the iPhone 15 Pro Max). Ensure the phone is in
 Bluetooth pairing mode when attempting to connect.
 
+Scanning now falls back to `bluetoothctl` if `hcitool` is unavailable and
+connection failures will display the full output from `bluetoothctl` so you can
+see exactly why a device did not connect.
+
 The Utilities menu also includes **Shell**, which opens the on-screen keyboard
 so you can type a command and execute it on the Pi. Press **KEY1** to cycle the
 keyboard layout, **KEY2** to delete the last character and **KEY3** to run the
