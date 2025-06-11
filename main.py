@@ -12,6 +12,7 @@ import re
 import webbrowser
 import shutil
 import socket
+from games import snake, tetris, rps, space_invaders
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -502,6 +503,18 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "launch_codes":
             if pin_name in BUTTON_PINS:
                 handle_launch_input(pin_name)
+        elif menu_instance.current_screen == "snake":
+            if pin_name in BUTTON_PINS:
+                handle_snake_input(pin_name)
+        elif menu_instance.current_screen == "tetris":
+            if pin_name in BUTTON_PINS:
+                handle_tetris_input(pin_name)
+        elif menu_instance.current_screen == "rps":
+            if pin_name in BUTTON_PINS:
+                handle_rps_input(pin_name)
+        elif menu_instance.current_screen == "space_invaders":
+            if pin_name in BUTTON_PINS:
+                handle_space_invaders_input(pin_name)
         elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
                 handle_notes_input(pin_name)
@@ -1351,6 +1364,53 @@ def handle_launch_input(pin_name):
             return
     draw_launch_code()
 
+# --- Additional Games ---
+
+def start_snake():
+    stop_scrolling()
+    snake.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "snake"
+    snake.start()
+
+
+def handle_snake_input(pin_name):
+    snake.handle_input(pin_name)
+
+
+def start_tetris():
+    stop_scrolling()
+    tetris.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "tetris"
+    tetris.start()
+
+
+def handle_tetris_input(pin_name):
+    tetris.handle_input(pin_name)
+
+
+def start_rps():
+    stop_scrolling()
+    rps.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "rps"
+    rps.start()
+
+
+def handle_rps_input(pin_name):
+    rps.handle_input(pin_name)
+
+
+def start_space_invaders():
+    stop_scrolling()
+    space_invaders.init(
+        thread_safe_display, (font_small, font_medium, font_large), show_main_menu
+    )
+    menu_instance.current_screen = "space_invaders"
+    space_invaders.start()
+
+
+def handle_space_invaders_input(pin_name):
+    space_invaders.handle_input(pin_name)
+
 # --- Notes Program ---
 
 notes_text = ""
@@ -1682,7 +1742,15 @@ def handle_text_size_selection(selection):
 def show_games_menu():
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
-    menu_instance.items = ["Button Game", "Launch Codes", "Back"]
+    menu_instance.items = [
+        "Button Game",
+        "Launch Codes",
+        "Snake",
+        "Tetris",
+        "Rock Paper Scissors",
+        "Space Invaders",
+        "Back",
+    ]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "games"
@@ -1695,6 +1763,18 @@ def handle_games_selection(selection):
         return
     elif selection == "Launch Codes":
         start_launch_codes()
+        return
+    elif selection == "Snake":
+        start_snake()
+        return
+    elif selection == "Tetris":
+        start_tetris()
+        return
+    elif selection == "Rock Paper Scissors":
+        start_rps()
+        return
+    elif selection == "Space Invaders":
+        start_space_invaders()
         return
     elif selection == "Back":
         show_main_menu()
