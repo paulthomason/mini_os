@@ -253,7 +253,10 @@ class Menu:
                     [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + line_height + 2)],
                     fill=(50, 50, 50),
                 )
-            text = f"{name}: The quick brown fox"
+            if name == "Back":
+                text = name
+            else:
+                text = f"{name}: The quick brown fox"
             draw.text((5, y_offset), text, font=sample_font, fill=text_color)
             y_offset += line_height + 4
 
