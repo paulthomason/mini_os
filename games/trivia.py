@@ -335,7 +335,7 @@ def handle_time_up():
 
 def restart_timer():
     global timer_end_time
-    timer_end_time = time.time() + 5
+    timer_end_time = time.time() + 15
     start_timer()
 
 
@@ -420,27 +420,20 @@ def draw_question(time_left=None):
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
     q = quiz_questions[question_idx]
-    d.text(
-        (5, 5),
-        f"{current_topic} {question_idx + 1}/{len(quiz_questions)}",
-        font=fonts[0],
-        fill=(255, 255, 255),
-    )
-
     dummy = Image.new("RGB", (1, 1))
     dd = ImageDraw.Draw(dummy)
-    question_lines = wrap_text(q["q"], fonts[1], 118, dd)
-    question_line_h_medium = dd.textbbox((0, 0), "A", font=fonts[1])[3] + 2
-    option_line_h = dd.textbbox((0, 0), "A", font=fonts[0])[3] + 2
+    question_lines = wrap_text(q["q"], fonts[0], 118, dd)
+    question_line_h_medium = dd.textbbox((0, 0), "A", font=fonts[0])[3] + 2
+    option_line_h = question_line_h_medium
     question_line_h_small = option_line_h
 
     total_height = len(question_lines) * question_line_h_medium + option_line_h * len(q["opts"]) + 2
-    available = 128 - 20
+    available = 128 - 15
     question_max_offset = max(0, total_height - available)
 
-    y = 20 - question_offset
+    y = 15 - question_offset
     for line in question_lines:
-        d.text((5, y), line, font=fonts[1], fill=(255, 255, 0))
+        d.text((5, y), line, font=fonts[0], fill=(255, 255, 0))
         y += question_line_h_medium
     y += 2
     for idx, opt in enumerate(q["opts"], 1):
