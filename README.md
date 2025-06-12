@@ -113,6 +113,12 @@ connection or **KEY2** to pair and connect (useful for phones that require
 confirming a passkey such as the iPhone 15 Pro Max). Ensure the phone is in
 Bluetooth pairing mode when attempting to connect.
 
+Bluetooth devices generally need to be paired before a connection will
+succeed. Pairing establishes a trusted relationship and the plain `connect`
+command often fails if the device was never paired. After pairing, you may
+need to run `trust <MAC>` inside `bluetoothctl` so the device reconnects
+automatically in the future.
+
 Scanning now falls back to `bluetoothctl` if `hcitool` is unavailable and
 connection failures will display the full output from `bluetoothctl` so you can
 see exactly why a device did not connect. Each failure is also saved in the

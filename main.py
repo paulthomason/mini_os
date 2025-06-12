@@ -1061,7 +1061,11 @@ def show_bluetooth_devices():
 
 
 def connect_bluetooth_device(device):
-    """Attempt to connect to the selected Bluetooth device using bluetoothctl."""
+    """Attempt to connect to the selected Bluetooth device using bluetoothctl.
+
+    The device must already be paired or the connection will likely fail.
+    Use ``connect_bluetooth_device_with_pin`` to pair and trust new devices.
+    """
     m = re.search(r"\(([0-9A-F:]{17})\)$", device)
     if not m:
         menu_instance.display_message_screen("Bluetooth", "Invalid device", delay=2)
@@ -1098,7 +1102,7 @@ def connect_bluetooth_device(device):
 
 
 def connect_bluetooth_device_with_pin(device):
-    """Pair and connect to a Bluetooth device, automatically confirming the PIN."""
+    """Pair, trust and connect to a Bluetooth device, automatically confirming the PIN."""
     m = re.search(r"\(([0-9A-F:]{17})\)$", device)
     if not m:
         menu_instance.display_message_screen("Bluetooth", "Invalid device", delay=2)
