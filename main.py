@@ -81,7 +81,8 @@ for pin_name, pin_num in BUTTON_PINS.items():
 
 # Global dictionary to track button states (updated by callback)
 button_states = {name: False for name in BUTTON_PINS.keys()}
-last_event_time = {name: 0.0 for name in BUTTON_PINS.keys()} # For basic debounce
+last_event_time = {name: 0.0 for name in BUTTON_PINS.keys()}  # For basic debounce
+press_start_time = {name: 0.0 for name in BUTTON_PINS.keys()}
 
 # Friendly names for buttons/joystick used in the reaction game
 BUTTON_NAMES = {
@@ -413,6 +414,7 @@ def button_event_handler(channel):
     # Only react on falling edge (button press)
     if GPIO.input(channel) == GPIO.LOW:
         button_states[pin_name] = True
+        press_start_time[pin_name] = current_time
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} PRESSED!") # For debugging
 
         # Perform action based on the pressed button
@@ -648,6 +650,12 @@ def button_event_handler(channel):
             handle_irc_chat_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
+        hold_time = current_time - press_start_time.get(pin_name, current_time)
+        if menu_instance.current_screen == "shell" and pin_name == "KEY3":
+            if hold_time >= 3:
+                show_main_menu()
+            else:
+                shell_enter()
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
     
     last_event_time[pin_name] = current_time
@@ -2152,9 +2160,9 @@ def handle_novel_typer_input(pin_name):
 # --- Shell Program ---
 
 shell_text = ""
-shell_keyboard_state = 1  # start in lowercase
-shell_typer_row = 1
-shell_typer_col = 0
+shell_page = 0
+shell_selected_group = None
+shell_group_index = 0
 
 
 shell_proc = None
@@ -2170,67 +2178,61 @@ sudo_pw_col = 0
 
 
 def draw_shell_screen():
-    """Render the shell with history and input."""
+    """Render the shell with history and input using the novel keyboard."""
     img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
     draw = ImageDraw.Draw(img)
 
     max_width = DISPLAY_WIDTH - 10
-    kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
+    kb_y = DISPLAY_HEIGHT // 2
     tips_height = 10
-    line_h = draw.textbbox((0, 0), "A", font=font_tiny)[3] + 1
+    line_h = draw.textbbox((0, 0), "A", font=font_small)[3] + 1
 
     history_lines = []
     for ln in shell_lines:
-        history_lines.extend(wrap_text(ln, font_tiny, max_width, draw))
-    history_lines.extend(wrap_text(f"$ {shell_text}", font_tiny, max_width, draw))
+        history_lines.extend(wrap_text(ln, font_small, max_width, draw))
+    history_lines.extend(wrap_text(f"$ {shell_text}", font_small, max_width, draw))
     max_lines = (kb_y - 5) // line_h
     start = max(0, len(history_lines) - max_lines)
     y = 5
     for line in history_lines[start:]:
-        draw.text((5, y), line, font=font_tiny, fill=(255, 255, 255))
+        draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
         y += line_h
 
-    row_h = (DISPLAY_HEIGHT - kb_y - tips_height) // len(KEY_LAYOUT)
-    key_w = DISPLAY_WIDTH // 10
-    for r, row in enumerate(KEY_LAYOUT):
-        if r == len(KEY_LAYOUT) - 1 and len(row) == 1:
-            offset_x = 5
-            this_key_w = DISPLAY_WIDTH - offset_x * 2
+    group_map = NOVEL_GROUP_SETS[shell_page]
+    order = ["JOY_UP", "JOY_LEFT", "JOY_PRESS", "JOY_RIGHT", "JOY_DOWN"]
+    col_w = DISPLAY_WIDTH // 5
+    row_h = 10
+    start_y = kb_y + 2
+    for idx, g in enumerate(order):
+        letters = group_map[g]
+        x = idx * col_w + 2
+        rect = (x, start_y - 2, x + col_w - 4, DISPLAY_HEIGHT - tips_height - 2)
+        if shell_selected_group == g:
+            draw.rectangle(rect, outline=(0, 255, 0))
         else:
-            offset_x = (DISPLAY_WIDTH - len(row) * key_w) // 2
-            this_key_w = key_w
-        for c, ch in enumerate(row):
-            x = offset_x + c * this_key_w
-            yk = kb_y + r * row_h
-            rect = (x + 1, yk + 1, x + this_key_w - 2, yk + row_h - 2)
-            if r == shell_typer_row and c == shell_typer_col:
-                draw.rectangle(rect, fill=(0, 255, 0))
-                text_color = (0, 0, 0)
-            else:
-                draw.rectangle(rect, outline=(255, 255, 255))
-                text_color = (255, 255, 255)
-            bbox = draw.textbbox((0, 0), ch, font=font_small)
-            tx = x + (this_key_w - (bbox[2] - bbox[0])) // 2
-            ty = yk + (row_h - (bbox[3] - bbox[1])) // 2
-            draw.text((tx, ty), ch, font=font_small, fill=text_color)
+            draw.rectangle(rect, outline=(255, 255, 255))
+        for j, ch in enumerate(letters):
+            color = (0, 255, 0) if (shell_selected_group == g and j == shell_group_index) else (255, 255, 255)
+            ty = start_y + j * row_h
+            draw.text((x + 2, ty), ch, font=font_small, fill=color)
 
-    tips = "1=Shift 2=Del 3=Run/Exit"
-    draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips, font=font_small, fill=(0, 255, 255))
+    draw.text((5, DISPLAY_HEIGHT - tips_height + 2),
+              "1=Tab 2=Back 3=Enter(hold=Exit)",
+              font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
 
 
 def start_shell():
     """Initialize the shell input program."""
-    global shell_text, shell_keyboard_state, KEY_LAYOUT, shell_typer_row, shell_typer_col, shell_proc
+    global shell_text, shell_page, shell_selected_group, shell_group_index, shell_proc
     stop_scrolling()
     if shell_proc is None:
         shell_proc = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
     shell_text = ""
-    shell_keyboard_state = 1
-    KEY_LAYOUT = KEY_LAYOUTS[shell_keyboard_state]
-    shell_typer_row = 1
-    shell_typer_col = 0
+    shell_page = 0
+    shell_selected_group = None
+    shell_group_index = 0
     menu_instance.current_screen = "shell"
     draw_shell_screen()
 
@@ -2377,35 +2379,51 @@ def run_shell_command(cmd):
     draw_shell_screen()
 
 
+def autocomplete_shell():
+    """Perform simple tab completion using bash compgen."""
+    global shell_text, shell_lines
+    prefix = shell_text.split()[-1] if shell_text.split() else shell_text
+    try:
+        output = subprocess.check_output(
+            ["bash", "-ic", f"compgen -cdfa -- '{prefix}'"],
+            text=True,
+        )
+        matches = [line for line in output.splitlines() if line]
+    except Exception:
+        matches = []
+    if len(matches) == 1:
+        shell_text += matches[0][len(prefix):]
+    elif len(matches) > 1:
+        shell_lines.append(" ".join(matches))
+    draw_shell_screen()
+
+
+def shell_enter():
+    """Execute current command and reset selection."""
+    global shell_selected_group, shell_group_index
+    if shell_text.strip():
+        run_shell_command(shell_text)
+    else:
+        show_main_menu()
+    shell_selected_group = None
+    shell_group_index = 0
+
+
 def handle_shell_input(pin_name):
     """Handle joystick and button input for the shell program."""
-    global shell_typer_row, shell_typer_col, shell_text, shell_keyboard_state, KEY_LAYOUT
-    if pin_name == "JOY_LEFT" and shell_typer_col > 0:
-        shell_typer_col -= 1
-    elif pin_name == "JOY_RIGHT" and shell_typer_col < len(KEY_LAYOUT[shell_typer_row]) - 1:
-        shell_typer_col += 1
-    elif pin_name == "JOY_UP" and shell_typer_row > 0:
-        shell_typer_row -= 1
-        shell_typer_col = min(shell_typer_col, len(KEY_LAYOUT[shell_typer_row]) - 1)
-    elif pin_name == "JOY_DOWN" and shell_typer_row < len(KEY_LAYOUT) - 1:
-        shell_typer_row += 1
-        shell_typer_col = min(shell_typer_col, len(KEY_LAYOUT[shell_typer_row]) - 1)
-    elif pin_name == "JOY_PRESS":
-        shell_text += KEY_LAYOUT[shell_typer_row][shell_typer_col]
+    global shell_page, shell_selected_group, shell_group_index, shell_text
+    if pin_name in ["JOY_UP", "JOY_DOWN", "JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
+        if shell_selected_group == pin_name:
+            shell_group_index = (shell_group_index + 1) % len(NOVEL_GROUP_SETS[shell_page][pin_name])
+        else:
+            shell_selected_group = pin_name
+            shell_group_index = 0
+        draw_shell_screen()
     elif pin_name == "KEY1":
-        shell_keyboard_state = (shell_keyboard_state + 1) % len(KEY_LAYOUTS)
-        KEY_LAYOUT = KEY_LAYOUTS[shell_keyboard_state]
-        shell_typer_row = min(shell_typer_row, len(KEY_LAYOUT) - 1)
-        shell_typer_col = min(shell_typer_col, len(KEY_LAYOUT[shell_typer_row]) - 1)
+        autocomplete_shell()
     elif pin_name == "KEY2":
         shell_text = shell_text[:-1]
-    elif pin_name == "KEY3":
-        if shell_text.strip():
-            run_shell_command(shell_text)
-        else:
-            show_main_menu()
-        return
-    draw_shell_screen()
+        draw_shell_screen()
 
 # --- raspi-config ---
 
