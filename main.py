@@ -150,6 +150,47 @@ def update_fonts():
 
 update_fonts()
 
+# --- Color Schemes ---
+# Basic menu color palettes inspired by macOS Terminal themes.
+COLOR_SCHEMES = {
+    "Default": {
+        "background": "black",
+        "text": (255, 255, 255),
+        "header": (0, 255, 255),
+        "highlight_bg": (50, 50, 50),
+        "highlight_text": (0, 255, 0),
+        "title": (255, 255, 0),
+    },
+    "Homebrew": {
+        "background": (0, 0, 0),
+        "text": (0, 255, 0),
+        "header": (255, 165, 0),
+        "highlight_bg": (40, 40, 40),
+        "highlight_text": (255, 255, 255),
+        "title": (255, 165, 0),
+    },
+    "Pro": {
+        "background": (0, 0, 0),
+        "text": (194, 194, 194),
+        "header": (255, 255, 255),
+        "highlight_bg": (64, 64, 64),
+        "highlight_text": (0, 255, 255),
+        "title": (255, 255, 255),
+    },
+}
+
+current_color_scheme = COLOR_SCHEMES["Default"]
+current_color_scheme_name = "Default"
+
+def apply_color_scheme(name):
+    """Set the active color scheme by name."""
+    global current_color_scheme, current_color_scheme_name
+    if name in COLOR_SCHEMES:
+        current_color_scheme = COLOR_SCHEMES[name]
+        current_color_scheme_name = name
+        if menu_instance:
+            menu_instance.draw()
+
 # --- Wi-Fi Status ---
 wifi_connected = False
 _wifi_check_time = 0
@@ -295,31 +336,31 @@ class Menu:
             self.draw_font_menu()
             return
 
-        # Create a new blank image with black background
-        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+        # Create a new blank image using the active background color
+        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=current_color_scheme["background"])
         draw = ImageDraw.Draw(img)
 
         # Draw header
         header_text = "Mini-OS Menu"
         if self.current_screen in ("nyt_list", "nyt_headline"):
             header_text = "NYT Top Stories"
-        draw.text((5, 2), header_text, font=font_large, fill=(0, 255, 255))
+        draw.text((5, 2), header_text, font=font_large, fill=current_color_scheme["header"])
         if self.current_screen == "main_menu" and is_wifi_connected():
-            draw_wifi_icon(draw, DISPLAY_WIDTH - 10, 15, color=(0, 255, 0))
-        draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255)) # Separator line
+            draw_wifi_icon(draw, DISPLAY_WIDTH - 10, 15, color=current_color_scheme["highlight_text"])
+        draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=current_color_scheme["text"]) # Separator line
 
         y_offset = 25
         line_height = draw.textbbox((0, 0), "Ag", font=self.font)[3]
         visible_items = self.items[self.view_start:self.view_start + self.max_visible_items]
         for idx, item in enumerate(visible_items):
             i = self.view_start + idx
-            text_color = (255, 255, 255)
+            text_color = current_color_scheme["text"]
 
             if i == self.selected_item:
-                text_color = (0, 255, 0)
+                text_color = current_color_scheme["highlight_text"]
                 draw.rectangle(
                     [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + line_height + 2)],
-                    fill=(50, 50, 50),
+                    fill=current_color_scheme["highlight_bg"],
                 )
 
             draw.text((5, y_offset), item, font=self.font, fill=text_color)
@@ -329,10 +370,10 @@ class Menu:
 
     def draw_font_menu(self):
         """Draw font selection menu with sample text."""
-        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=current_color_scheme["background"])
         draw = ImageDraw.Draw(img)
-        draw.text((5, 2), "Select Font", font=font_large, fill=(0, 255, 255))
-        draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255))
+        draw.text((5, 2), "Select Font", font=font_large, fill=current_color_scheme["header"])
+        draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=current_color_scheme["text"])
 
         y_offset = 25
         line_height = draw.textbbox((0, 0), "Ag", font=self.font)[3]
@@ -348,11 +389,11 @@ class Menu:
                     )
                 except IOError:
                     sample_font = self.font
-            text_color = (0, 255, 0) if i == self.selected_item else (255, 255, 255)
+            text_color = current_color_scheme["highlight_text"] if i == self.selected_item else current_color_scheme["text"]
             if i == self.selected_item:
                 draw.rectangle(
                     [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + line_height + 2)],
-                    fill=(50, 50, 50),
+                    fill=current_color_scheme["highlight_bg"],
                 )
             if name == "Back":
                 text = name
@@ -379,15 +420,15 @@ class Menu:
         return self.items[self.selected_item]
 
     def display_message_screen(self, title, message, delay=3, clear_after=True):
-        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=current_color_scheme["background"])
         draw = ImageDraw.Draw(img)
-        draw.text((5, 5), title, font=font_large, fill=(255, 255, 0)) # Yellow title
+        draw.text((5, 5), title, font=font_large, fill=current_color_scheme["title"])
         max_width = DISPLAY_WIDTH - 10
         lines = wrap_text(message, font_medium, max_width, draw)
         y = 25
         line_height = draw.textbbox((0, 0), "A", font=font_medium)[3]
         for line in lines:
-            draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+            draw.text((5, y), line, font=font_medium, fill=current_color_scheme["text"])
             y += line_height + 2
         thread_safe_display(img)
         time.sleep(delay)
@@ -395,7 +436,7 @@ class Menu:
             self.clear_display()
 
     def clear_display(self):
-        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=current_color_scheme["background"])
         thread_safe_display(img)
 
 # --- Button Event Handler ---
@@ -478,6 +519,15 @@ def button_event_handler(channel):
                 menu_instance.navigate("down")
             elif pin_name == "JOY_PRESS":
                 handle_text_size_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_display_menu()
+        elif menu_instance.current_screen == "color_scheme_menu":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_color_scheme_selection(menu_instance.get_selected_item())
             elif pin_name == "KEY1":
                 show_display_menu()
         elif menu_instance.current_screen == "wifi_list":
@@ -2553,7 +2603,7 @@ def show_display_menu():
     """Display settings submenu."""
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
-    menu_instance.items = ["Brightness", "Font", "Text Size", "Back"]
+    menu_instance.items = ["Brightness", "Font", "Text Size", "Color Scheme", "Back"]
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.current_screen = "display_settings"
@@ -2582,6 +2632,17 @@ def show_text_size_menu():
     menu_instance.draw()
 
 
+def show_color_scheme_menu():
+    """Allow the user to select a menu color scheme."""
+    stop_scrolling()
+    menu_instance.items = list(COLOR_SCHEMES.keys()) + ["Back"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.current_screen = "color_scheme_menu"
+    menu_instance.draw()
+
+
 def handle_display_selection(selection):
     if selection == "Brightness":
         menu_instance.current_screen = "brightness"
@@ -2590,6 +2651,8 @@ def handle_display_selection(selection):
         show_font_menu()
     elif selection == "Text Size":
         show_text_size_menu()
+    elif selection == "Color Scheme":
+        show_color_scheme_menu()
     elif selection == "Back":
         show_settings_menu()
 
@@ -2617,6 +2680,15 @@ def handle_text_size_selection(selection):
     menu_instance.font = font_medium
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.display_message_screen("Text Size", f"{selection} selected", delay=2)
+    show_display_menu()
+
+
+def handle_color_scheme_selection(selection):
+    if selection == "Back":
+        show_display_menu()
+        return
+    apply_color_scheme(selection)
+    menu_instance.display_message_screen("Color Scheme", f"{selection} selected", delay=2)
     show_display_menu()
 
 
