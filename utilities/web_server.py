@@ -227,7 +227,7 @@ def shell():
         socket.onopen = () => term.focus();
         term.onData(d => socket.send(d));
         socket.onmessage = e => term.write(e.data);
-        socket.onclose = () => term.write('\r\n[Disconnected]');
+        socket.onclose = () => term.write("\r\n[Disconnected]");
     </script>
     </body>
     </html>
