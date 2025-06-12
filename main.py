@@ -1507,68 +1507,72 @@ def start_chat():
 def run_system_monitor(duration=10):
     """Display CPU temperature, load and memory usage for a few seconds."""
     end_time = time.time() + duration
+    next_update = 0
     while time.time() < end_time:
         if button_states.get("KEY3"):
             break
-        # CPU temperature using vcgencmd if available
-        try:
-            output = subprocess.check_output(["vcgencmd", "measure_temp"]).decode()
-            temp = output.strip().replace("temp=", "").replace("'C", "")
-        except Exception:
-            temp = "N/A"
+        now = time.time()
+        if now >= next_update:
+            next_update = now + 1
+            # CPU temperature using vcgencmd if available
+            try:
+                output = subprocess.check_output(["vcgencmd", "measure_temp"]).decode()
+                temp = output.strip().replace("temp=", "").replace("'C", "")
+            except Exception:
+                temp = "N/A"
 
-        # CPU load (1 minute average)
-        try:
-            load = os.getloadavg()[0]
-        except Exception:
-            load = 0.0
+            # CPU load (1 minute average)
+            try:
+                load = os.getloadavg()[0]
+            except Exception:
+                load = 0.0
 
-        # Current CPU frequency in MHz
-        try:
-            with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq") as f:
-                cpu_freq = int(f.read().strip()) / 1000  # kHz -> MHz
-        except Exception:
-            cpu_freq = None
+            # Current CPU frequency in MHz
+            try:
+                with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq") as f:
+                    cpu_freq = int(f.read().strip()) / 1000  # kHz -> MHz
+            except Exception:
+                cpu_freq = None
 
-        # Disk usage for root filesystem
-        try:
-            usage = shutil.disk_usage("/")
-            disk_str = f"{usage.used // (1024**3)}/{usage.total // (1024**3)}GB"
-        except Exception:
-            disk_str = "N/A"
+            # Disk usage for root filesystem
+            try:
+                usage = shutil.disk_usage("/")
+                disk_str = f"{usage.used // (1024**3)}/{usage.total // (1024**3)}GB"
+            except Exception:
+                disk_str = "N/A"
 
-        # Memory usage from /proc/meminfo
-        mem_total = 0
-        mem_available = 0
-        try:
-            with open("/proc/meminfo") as f:
-                for line in f:
-                    if line.startswith("MemTotal"):
-                        mem_total = int(line.split()[1])
-                    elif line.startswith("MemAvailable"):
-                        mem_available = int(line.split()[1])
-        except Exception:
-            pass
-        mem_used = mem_total - mem_available
-        if mem_total:
-            mem_str = f"{mem_used//1024}/{mem_total//1024}MB"
-        else:
-            mem_str = "N/A"
+            # Memory usage from /proc/meminfo
+            mem_total = 0
+            mem_available = 0
+            try:
+                with open("/proc/meminfo") as f:
+                    for line in f:
+                        if line.startswith("MemTotal"):
+                            mem_total = int(line.split()[1])
+                        elif line.startswith("MemAvailable"):
+                            mem_available = int(line.split()[1])
+            except Exception:
+                pass
+            mem_used = mem_total - mem_available
+            if mem_total:
+                mem_str = f"{mem_used//1024}/{mem_total//1024}MB"
+            else:
+                mem_str = "N/A"
 
-        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
-        draw = ImageDraw.Draw(img)
-        draw.text((5, 5), "System Monitor", font=font_large, fill=(255, 255, 0))
-        draw.text((5, 25), f"Temp: {temp}C", font=font_medium, fill=(255, 255, 255))
-        draw.text((5, 40), f"Load: {load:.2f}", font=font_medium, fill=(255, 255, 255))
-        if cpu_freq is not None:
-            draw.text((5, 55), f"Freq: {cpu_freq:.0f}MHz", font=font_medium, fill=(255, 255, 255))
-        else:
-            draw.text((5, 55), "Freq: N/A", font=font_medium, fill=(255, 255, 255))
-        draw.text((5, 70), f"Mem: {mem_str}", font=font_medium, fill=(255, 255, 255))
-        draw.text((5, 85), f"Disk: {disk_str}", font=font_medium, fill=(255, 255, 255))
-        draw.text((5, DISPLAY_HEIGHT - 10), "1=Menu 3=Back", font=font_small, fill=(0, 255, 255))
-        thread_safe_display(img)
-        time.sleep(1)
+            img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+            draw = ImageDraw.Draw(img)
+            draw.text((5, 5), "System Monitor", font=font_large, fill=(255, 255, 0))
+            draw.text((5, 25), f"Temp: {temp}C", font=font_medium, fill=(255, 255, 255))
+            draw.text((5, 40), f"Load: {load:.2f}", font=font_medium, fill=(255, 255, 255))
+            if cpu_freq is not None:
+                draw.text((5, 55), f"Freq: {cpu_freq:.0f}MHz", font=font_medium, fill=(255, 255, 255))
+            else:
+                draw.text((5, 55), "Freq: N/A", font=font_medium, fill=(255, 255, 255))
+            draw.text((5, 70), f"Mem: {mem_str}", font=font_medium, fill=(255, 255, 255))
+            draw.text((5, 85), f"Disk: {disk_str}", font=font_medium, fill=(255, 255, 255))
+            draw.text((5, DISPLAY_HEIGHT - 10), "1=Menu 3=Back", font=font_small, fill=(0, 255, 255))
+            thread_safe_display(img)
+        time.sleep(0.1)
     menu_instance.clear_display()
     show_utilities_menu()
 
@@ -1614,23 +1618,27 @@ def show_network_info(duration=10):
         ssid = "N/A"
 
     end_time = time.time() + duration
+    next_update = 0
     while time.time() < end_time:
         if button_states.get("KEY3"):
             break
-        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
-        draw = ImageDraw.Draw(img)
-        draw.text((5, 5), "Network Info", font=font_large, fill=(255, 255, 0))
-        max_width = DISPLAY_WIDTH - 10
-        y = 25
-        for line in wrap_text(f"IP: {ip_addr}", font_small, max_width, draw):
-            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
-            y += draw.textbbox((0, 0), line, font=font_small)[3] + 2
-        for line in wrap_text(f"SSID: {ssid}", font_small, max_width, draw):
-            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
-            y += draw.textbbox((0, 0), line, font=font_small)[3] + 2
-        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
-        thread_safe_display(img)
-        time.sleep(1)
+        now = time.time()
+        if now >= next_update:
+            next_update = now + 1
+            img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color='black')
+            draw = ImageDraw.Draw(img)
+            draw.text((5, 5), "Network Info", font=font_large, fill=(255, 255, 0))
+            max_width = DISPLAY_WIDTH - 10
+            y = 25
+            for line in wrap_text(f"IP: {ip_addr}", font_small, max_width, draw):
+                draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+                y += draw.textbbox((0, 0), line, font=font_small)[3] + 2
+            for line in wrap_text(f"SSID: {ssid}", font_small, max_width, draw):
+                draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+                y += draw.textbbox((0, 0), line, font=font_small)[3] + 2
+            draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+            thread_safe_display(img)
+        time.sleep(0.1)
 
     menu_instance.clear_display()
     show_utilities_menu()

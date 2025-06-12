@@ -230,6 +230,7 @@ def shell():
         // Send a CRLF sequence when the WebSocket closes
         // Use double escaping so the JS string contains "\\r\\n"
         socket.onclose = () => term.write("\\r\\n[Disconnected]");
+        
     </script>
     </body>
     </html>
