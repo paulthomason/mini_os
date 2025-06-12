@@ -267,16 +267,6 @@ def is_wifi_connected():
     return wifi_connected
 
 
-# Load Wi-Fi icon image if available
-ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
-os.makedirs(ASSETS_DIR, exist_ok=True)
-WIFI_ICON_PATH = os.path.join(ASSETS_DIR, "wifi.png")
-wifi_icon_img = None
-if os.path.exists(WIFI_ICON_PATH):
-    try:
-        wifi_icon_img = Image.open(WIFI_ICON_PATH).convert("RGB")
-    except Exception:
-        wifi_icon_img = None
 
 # --- Backlight Control ---
 brightness_level = 100  # Percentage 0-100
@@ -403,16 +393,8 @@ class Menu:
         if self.current_screen in ("nyt_list", "nyt_headline"):
             header_text = "NYT Top Stories"
         draw.text((5, 2), header_text, font=font_large, fill=current_color_scheme["header"])
-        if (
-            self.current_screen == "main_menu"
-            and is_wifi_connected()
-            and wifi_icon_img is not None
-        ):
-            img.paste(
-                wifi_icon_img,
-                (DISPLAY_WIDTH - wifi_icon_img.width, 0),
-            )
-        draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=current_color_scheme["text"]) # Separator line
+        # Draw a separator line under the header
+        draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=current_color_scheme["text"])  # Separator line
 
         y_offset = 25
         line_height = draw.textbbox((0, 0), "Ag", font=self.font)[3]
