@@ -13,7 +13,7 @@ import webbrowser
 import shutil
 import socket
 import pexpect
-from games import snake, tetris, rps, space_invaders, vet_adventure, axe, trivia
+from games import snake, tetris, rps, space_invaders, vet_adventure, axe, trivia, hack_in
 
 # Luma.lcd imports and setup
 from luma.core.interface.serial import spi
@@ -565,6 +565,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "trivia":
             if pin_name in BUTTON_PINS:
                 handle_trivia_input(pin_name)
+        elif menu_instance.current_screen == "hack_in":
+            if pin_name in BUTTON_PINS:
+                handle_hack_in_input(pin_name)
         elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
                 handle_notes_input(pin_name)
@@ -1701,6 +1704,18 @@ def start_trivia():
 def handle_trivia_input(pin_name):
     trivia.handle_input(pin_name)
 
+# --- Hack In Animation ---
+
+def start_hack_in():
+    stop_scrolling()
+    hack_in.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "hack_in"
+    hack_in.start()
+
+
+def handle_hack_in_input(pin_name):
+    hack_in.handle_input(pin_name)
+
 # --- Notes Program ---
 
 notes_text = ""
@@ -2584,6 +2599,7 @@ def show_games_menu():
         "Vet Adventure",
         "Axe",
         "Trivia",
+        "Hack In",
         "Back",
     ]
     menu_instance.selected_item = 0
@@ -2619,6 +2635,9 @@ def handle_games_selection(selection):
         return
     elif selection == "Trivia":
         start_trivia()
+        return
+    elif selection == "Hack In":
+        start_hack_in()
         return
     elif selection == "Back":
         show_main_menu()
