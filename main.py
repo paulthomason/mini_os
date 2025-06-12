@@ -24,6 +24,7 @@ from games import (
     trivia,
     hack_in,
     pico_wow,
+    gta_1997,
 )
 
 # Luma.lcd imports and setup
@@ -783,6 +784,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "pico_wow":
             if pin_name in BUTTON_PINS:
                 handle_pico_wow_input(pin_name)
+        elif menu_instance.current_screen == "gta_1997":
+            if pin_name in BUTTON_PINS:
+                handle_gta_1997_input(pin_name)
         elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
                 handle_notes_input(pin_name)
@@ -1965,6 +1969,18 @@ def start_hack_in():
 def handle_hack_in_input(pin_name):
     hack_in.handle_input(pin_name)
 
+# --- GTA 1997 Style Game ---
+
+def start_gta_1997():
+    stop_scrolling()
+    gta_1997.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "gta_1997"
+    gta_1997.start()
+
+
+def handle_gta_1997_input(pin_name):
+    gta_1997.handle_input(pin_name)
+
 # --- Notes Program ---
 
 notes_text = ""
@@ -2886,6 +2902,7 @@ def show_games_menu():
         "Trivia",
         "Hack In",
         "Pico WoW",
+        "GTA 1997",
         "Back",
     ]
     menu_instance.selected_item = 0
@@ -2927,6 +2944,9 @@ def handle_games_selection(selection):
         return
     elif selection == "Pico WoW":
         start_pico_wow()
+        return
+    elif selection == "GTA 1997":
+        start_gta_1997()
         return
     elif selection == "Back":
         show_main_menu()
