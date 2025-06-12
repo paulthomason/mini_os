@@ -396,6 +396,18 @@ def compute_max_visible_items(font):
     return max(1, available_height // (line_height + 4))
 
 
+def compute_max_visible_items_from_lines(lines_list, font):
+    """Return a safe item count given wrapped lines for each item."""
+    if not lines_list:
+        return compute_max_visible_items(font)
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    line_height = dummy_draw.textbbox((0, 0), "Ag", font=font)[3]
+    max_lines = max(len(lines) for lines in lines_list)
+    available_height = DISPLAY_HEIGHT - 25
+    return max(1, available_height // (line_height * max_lines + 4))
+
+
 # --- Menu System ---
 class Menu:
     def __init__(self, items, font=font_medium):
@@ -406,6 +418,8 @@ class Menu:
         self.view_start = 0  # First visible item index
         # Calculate how many items actually fit on the screen for the given font
         self.max_visible_items = compute_max_visible_items(self.font)
+        # Optional pre-wrapped item text for variable-height lists
+        self.item_lines = None
 
     def draw(self):
         if self.current_screen == "font_menu":
@@ -426,20 +440,42 @@ class Menu:
 
         y_offset = 25
         line_height = draw.textbbox((0, 0), "Ag", font=self.font)[3]
-        visible_items = self.items[self.view_start:self.view_start + self.max_visible_items]
-        for idx, item in enumerate(visible_items):
-            i = self.view_start + idx
-            text_color = current_color_scheme["text"]
 
-            if i == self.selected_item:
-                text_color = current_color_scheme["highlight_text"]
-                draw.rectangle(
-                    [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + line_height + 2)],
-                    fill=current_color_scheme["highlight_bg"],
+        if self.current_screen == "bluetooth_list" and self.item_lines:
+            for i in range(self.view_start, len(self.items)):
+                lines = self.item_lines[i]
+                item_height = line_height * len(lines) + 4
+                if y_offset + item_height - 4 > DISPLAY_HEIGHT:
+                    break
+                selected = i == self.selected_item
+                text_color = (
+                    current_color_scheme["highlight_text"] if selected else current_color_scheme["text"]
                 )
+                if selected:
+                    draw.rectangle(
+                        [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + item_height - 2)],
+                        fill=current_color_scheme["highlight_bg"],
+                    )
+                y_line = y_offset
+                for line in lines:
+                    draw.text((5, y_line), line, font=self.font, fill=text_color)
+                    y_line += line_height
+                y_offset += item_height
+        else:
+            visible_items = self.items[self.view_start:self.view_start + self.max_visible_items]
+            for idx, item in enumerate(visible_items):
+                i = self.view_start + idx
+                text_color = current_color_scheme["text"]
 
-            draw.text((5, y_offset), item, font=self.font, fill=text_color)
-            y_offset += line_height + 4  # Consistent line spacing
+                if i == self.selected_item:
+                    text_color = current_color_scheme["highlight_text"]
+                    draw.rectangle(
+                        [(2, y_offset - 2), (DISPLAY_WIDTH - 2, y_offset + line_height + 2)],
+                        fill=current_color_scheme["highlight_bg"],
+                    )
+
+                draw.text((5, y_offset), item, font=self.font, fill=text_color)
+                y_offset += line_height + 4  # Consistent line spacing
 
         thread_safe_display(img) # Send the PIL image to the display
 
@@ -1083,7 +1119,14 @@ def show_bluetooth_devices():
     menu_instance.selected_item = 0
     menu_instance.view_start = 0
     menu_instance.font = font_small
-    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    menu_instance.item_lines = [
+        wrap_text(d, menu_instance.font, DISPLAY_WIDTH - 10, dummy_draw) for d in devices
+    ]
+    menu_instance.max_visible_items = compute_max_visible_items_from_lines(
+        menu_instance.item_lines, menu_instance.font
+    )
     menu_instance.current_screen = "bluetooth_list"
     menu_instance.draw()
 
