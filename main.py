@@ -338,6 +338,11 @@ irc_input_text = ""
 IRC_KEY_LAYOUTS = None  # defined after keyboard layouts
 irc_keyboard_state = 0
 
+# --- Bluetooth Pairing ---
+bt_pairing_proc = None
+bt_pairing_result = None
+bt_pairing_cancel = False
+
 # --- Scrollable Message ---
 message_lines = []
 message_line_h = 0
@@ -654,6 +659,15 @@ def button_event_handler(channel):
                     connect_to_wifi(selection)
             elif pin_name == "KEY1":
                 show_settings_menu()
+        elif menu_instance.current_screen == "bluetooth_menu":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_bluetooth_menu_selection(menu_instance.get_selected_item())
+            elif pin_name == "KEY1":
+                show_settings_menu()
         elif menu_instance.current_screen == "bluetooth_list":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -675,6 +689,10 @@ def button_event_handler(channel):
                     show_settings_menu()
                 else:
                     connect_bluetooth_device_with_pin(selection)
+        elif menu_instance.current_screen == "bluetooth_pairing":
+            if pin_name == "KEY1":
+                global bt_pairing_cancel
+                bt_pairing_cancel = True
         elif menu_instance.current_screen == "games":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -1216,6 +1234,85 @@ def connect_bluetooth_device_with_pin(device):
             details = f"Failed to connect to {device}.\n{details}"
         save_bt_failure(details)
         show_scroll_message("Bluetooth Error", details)
+
+
+def start_bluetooth_pairing():
+    """Make the device discoverable and wait for an incoming Bluetooth connection."""
+    stop_scrolling()
+    global bt_pairing_proc, bt_pairing_result, bt_pairing_cancel
+    bt_pairing_result = None
+    bt_pairing_cancel = False
+
+    def pair_thread():
+        global bt_pairing_proc, bt_pairing_result
+        try:
+            bt_pairing_proc = subprocess.Popen(
+                ["bluetoothctl"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+            setup_cmds = (
+                "power on\n"
+                "agent NoInputNoOutput\n"
+                "default-agent\n"
+                "pairable on\n"
+                "discoverable on\n"
+            )
+            bt_pairing_proc.stdin.write(setup_cmds)
+            bt_pairing_proc.stdin.flush()
+
+            for line in bt_pairing_proc.stdout:
+                line = line.strip()
+                if "Connection successful" in line:
+                    bt_pairing_result = True
+                    break
+                elif "Failed" in line or "failed" in line or "Error" in line:
+                    bt_pairing_result = False
+                    break
+                if bt_pairing_cancel:
+                    break
+        except Exception:
+            bt_pairing_result = False
+        finally:
+            if bt_pairing_proc and bt_pairing_proc.poll() is None:
+                try:
+                    bt_pairing_proc.stdin.write(
+                        "discoverable off\npairable off\nquit\n"
+                    )
+                    bt_pairing_proc.stdin.flush()
+                except Exception:
+                    pass
+                bt_pairing_proc.terminate()
+            bt_pairing_proc = None
+
+    t = threading.Thread(target=pair_thread)
+    t.start()
+
+    menu_instance.current_screen = "bluetooth_pairing"
+    dot_cycle = ["", ".", "..", "..."]
+    idx = 0
+    while t.is_alive() and not bt_pairing_cancel:
+        msg = (
+            f"Waiting for connection{dot_cycle[idx % len(dot_cycle)]}\n"
+            "Press KEY1 to cancel"
+        )
+        menu_instance.display_message_screen(
+            "Bluetooth", msg, delay=0.5, clear_after=False
+        )
+        idx += 1
+    t.join()
+
+    if bt_pairing_cancel:
+        menu_instance.display_message_screen("Bluetooth", "Pairing cancelled", delay=2)
+    else:
+        if bt_pairing_result:
+            menu_instance.display_message_screen("Bluetooth", "Connection successful", delay=3)
+        else:
+            menu_instance.display_message_screen("Bluetooth", "Connection failed", delay=3)
+    show_settings_menu()
 
 
 def connect_to_wifi(ssid):
@@ -2871,6 +2968,26 @@ def handle_color_scheme_selection(selection):
     show_display_menu()
 
 
+def show_bluetooth_menu():
+    """Menu for Bluetooth actions."""
+    stop_scrolling()
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.items = ["Discover devices", "Pairing mode", "Back"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.current_screen = "bluetooth_menu"
+    menu_instance.draw()
+
+
+def handle_bluetooth_menu_selection(selection):
+    if selection == "Discover devices":
+        show_bluetooth_devices()
+    elif selection == "Pairing mode":
+        start_bluetooth_pairing()
+    elif selection == "Back":
+        show_settings_menu()
+
+
 def show_games_menu():
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
@@ -3017,7 +3134,7 @@ def handle_settings_selection(selection):
     elif selection == "Wi-Fi Setup":
         show_wifi_networks()
     elif selection == "Bluetooth":
-        show_bluetooth_devices()
+        show_bluetooth_menu()
     elif selection == "raspi-config":
         start_raspi_config()
     elif selection == "Toggle Wi-Fi":

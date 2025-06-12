@@ -111,11 +111,16 @@ use it to connect without prompting for the password.
 
 ## Bluetooth
 
-From **Settings** choose **Bluetooth** to scan for nearby devices. Select your
-iPhone or other device with the joystick. Press **KEY1** to attempt a direct
-connection or **KEY2** to pair and connect (useful for phones that require
-confirming a passkey such as the iPhone 15 Pro Max). Ensure the phone is in
-Bluetooth pairing mode when attempting to connect.
+From **Settings** choose **Bluetooth** to open the bluetooth menu. The menu has
+two options:
+
+1. **Discover devices** – performs a scan and lists all nearby devices. Select
+   a device with the joystick. Press **KEY1** to attempt a direct connection or
+   **KEY2** to pair and connect (useful for phones that require confirming a
+   passkey such as the iPhone 15 Pro Max).
+2. **Pairing mode** – places the Mini‑OS into discoverable and pairable mode so
+   other devices can initiate a connection. Pairing mode listens for incoming
+   connections until one succeeds or the user exits the screen.
 
 Bluetooth devices generally need to be paired before a connection will
 succeed. Pairing establishes a trusted relationship and the plain `connect`
