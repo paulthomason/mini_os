@@ -1,5 +1,6 @@
 import time
 import random
+import threading
 from PIL import Image, ImageDraw
 
 thread_safe_display = None
@@ -15,6 +16,10 @@ question_offset = 0
 question_max_offset = 0
 question_line_h_small = 0
 question_line_h_medium = 0
+
+timer_thread = None
+timer_stop_event = threading.Event()
+timer_end_time = 0
 
 # Simple text wrapping helper
 def wrap_text(text, font, max_width, draw):
@@ -237,208 +242,101 @@ QUESTIONS = {
         },
     ],
     "Veterinary Internal Medicine": [
-        {
-            "q": "Normal dog temp (\u00b0F)?",
-            "opts": ["99", "101.5", "103.5"],
-            "a": 1,
-        },
-        {
-            "q": "FIV affects which species?",
-            "opts": ["Dogs", "Cats", "Horses"],
-            "a": 1,
-        },
-        {
-            "q": "Addison's disease involves?",
-            "opts": ["Pancreas", "Adrenal", "Thyroid"],
-            "a": 1,
-        },
-        {
-            "q": "Common diabetes sign?",
-            "opts": ["Hair loss", "Increased thirst", "Limping"],
-            "a": 1,
-        },
-        {
-            "q": "Heartworm spread by?",
-            "opts": ["Ticks", "Mosquitoes", "Fleas"],
-            "a": 1,
-        },
-        {
-            "q": "Treat feline hyperthyroidism with?",
-            "opts": ["Insulin", "Methimazole", "Prednisone"],
-            "a": 1,
-        },
-        {
-            "q": "Parvo primarily attacks?",
-            "opts": ["Intestines", "Liver", "Kidneys"],
-            "a": 0,
-        },
-        {
-            "q": "Cushing's disease hormone?",
-            "opts": ["Insulin", "Cortisol", "Estrogen"],
-            "a": 1,
-        },
-        {
-            "q": "Anemia is low?",
-            "opts": ["White cells", "Platelets", "Red cells"],
-            "a": 2,
-        },
-        {
-            "q": "FIP stands for feline infectious?",
-            "opts": ["Pneumonia", "Peritonitis", "Pancreatitis"],
-            "a": 1,
-        },
-        {
-            "q": "Bovine ketosis due to lack of?",
-            "opts": ["Calcium", "Energy", "Protein"],
-            "a": 1,
-        },
-        {
-            "q": "IMHA stands for immune-mediated?",
-            "opts": ["Hepatitis", "Hemolytic anemia", "Heart arrhythmia"],
-            "a": 1,
-        },
-        {
-            "q": "Equine colic affects?",
-            "opts": ["Lungs", "Digestive tract", "Skin"],
-            "a": 1,
-        },
-        {
-            "q": "Common cause of feline CKD?",
-            "opts": ["Diabetes", "Age damage", "Heart disease"],
-            "a": 1,
-        },
-        {
-            "q": "DHPP vaccine protects distemper, hepatitis, parainfluenza and?",
-            "opts": ["Parvo", "Pyometra", "Parrot fever"],
-            "a": 0,
-        },
-        {
-            "q": "Pancreatitis diagnosed best with?",
-            "opts": ["X-ray", "Ultrasound", "MRI"],
-            "a": 1,
-        },
-        {
-            "q": "Common sign of feline hyperthyroidism?",
-            "opts": ["Weight gain", "Weight loss", "Seizures"],
-            "a": 1,
-        },
-        {
-            "q": "GDV stands for?",
-            "opts": ["Gastric Dilatation Volvulus", "Generalized Dermatitis Virus", "Giant Dog Vomit"],
-            "a": 0,
-        },
-        {
-            "q": "Renal failure leads to high?",
-            "opts": ["Blood urea nitrogen", "Glucose", "Calcium"],
-            "a": 0,
-        },
-        {
-            "q": "A common tick-borne disease in dogs?",
-            "opts": ["Leptospirosis", "Lyme disease", "Distemper"],
-            "a": 1,
-        },
-        {
-            "q": "Causative agent of toxoplasmosis?",
-            "opts": ["Toxoplasma gondii", "Giardia", "Coccidia"],
-            "a": 0,
-        },
-        {
-            "q": "Hormone lacking in diabetes mellitus?",
-            "opts": ["Insulin", "Cortisol", "Thyroxine"],
-            "a": 0,
-        },
-        {
-            "q": "Primary cause of canine Cushing's?",
-            "opts": ["Pituitary tumor", "Adrenal atrophy", "Kidney disease"],
-            "a": 0,
-        },
-        {
-            "q": "Normal cat heart rate?",
-            "opts": ["120-160", "60-90", "40-60"],
-            "a": 0,
-        },
-        {
-            "q": "Common cause of canine seizures?",
-            "opts": ["Epilepsy", "Hyperkalemia", "Hypothyroidism"],
-            "a": 0,
-        },
-        {
-            "q": "Heartworm prevention drug?",
-            "opts": ["Ivermectin", "Amoxicillin", "Prednisone"],
-            "a": 0,
-        },
-        {
-            "q": "Test used to detect FeLV?",
-            "opts": ["Snap ELISA", "Fecal float", "CT scan"],
-            "a": 0,
-        },
-        {
-            "q": "Panleukopenia affects primarily?",
-            "opts": ["Cats", "Dogs", "Horses"],
-            "a": 0,
-        },
-        {
-            "q": "Leptospirosis damages which organ most?",
-            "opts": ["Kidneys", "Heart", "Lungs"],
-            "a": 0,
-        },
-        {
-            "q": "Treatment for canine hypothyroidism?",
-            "opts": ["Levothyroxine", "Insulin", "Progesterone"],
-            "a": 0,
-        },
-        {
-            "q": "CBC stands for?",
-            "opts": ["Complete Blood Count", "Critical Body Condition", "Calcium Binding Complex"],
-            "a": 0,
-        },
-        {
-            "q": "Breed prone to dilated cardiomyopathy?",
-            "opts": ["Doberman", "Chihuahua", "Pug"],
-            "a": 0,
-        },
-        {
-            "q": "Drug of choice for status epilepticus?",
-            "opts": ["Diazepam", "Hydrocodone", "Carprofen"],
-            "a": 0,
-        },
-        {
-            "q": "Pyometra is a?",
-            "opts": ["Uterine infection", "Ear infection", "Bone cancer"],
-            "a": 0,
-        },
-        {
-            "q": "Nutrient restricted in renal diets?",
-            "opts": ["Phosphorus", "Fat", "Carbohydrate"],
-            "a": 0,
-        },
-        {
-            "q": "Cattle bloat affects which compartment?",
-            "opts": ["Rumen", "Abomasum", "Omasum"],
-            "a": 0,
-        },
-        {
-            "q": "Medication for feline asthma?",
-            "opts": ["Bronchodilator", "Insulin", "Diuretic"],
-            "a": 0,
-        },
-        {
-            "q": "Addison's disease treated with?",
-            "opts": ["Steroids", "Antibiotics", "Insulin"],
-            "a": 0,
-        },
-        {
-            "q": "PCR test detects?",
-            "opts": ["DNA/RNA", "Proteins", "Electrolytes"],
-            "a": 0,
-        },
-        {
-            "q": "Which organ is affected by hepatitis?",
-            "opts": ["Liver", "Heart", "Spleen"],
-            "a": 0,
-        },
+        {"q": "Which endocrine test is preferred to confirm canine Addison's disease?", "opts": ["ACTH stimulation", "Low-dose dexamethasone suppression", "Endogenous ACTH"], "a": 0},
+        {"q": "The typical radiographic sign of feline asthma is?", "opts": ["Bronchial pattern", "Alveolar pattern", "Interstitial pattern"], "a": 0},
+        {"q": "Which antibiotic is recommended for leptospirosis in dogs?", "opts": ["Doxycycline", "Enrofloxacin", "Cephalexin"], "a": 0},
+        {"q": "What is the definitive host of Neospora caninum?", "opts": ["Dog", "Cat", "Cow"], "a": 0},
+        {"q": "In cats, hepatic lipidosis is most commonly triggered by?", "opts": ["Anorexia", "Hyperthyroidism", "Pancreatitis"], "a": 0},
+        {"q": "Which electrolyte imbalance is most characteristic of hypoadrenocorticism?", "opts": ["Low Na and high K", "High Na and low K", "Low Ca and high P"], "a": 0},
+        {"q": "Which drug is a potassium-sparing diuretic used for heart failure?", "opts": ["Spironolactone", "Furosemide", "Hydrochlorothiazide"], "a": 0},
+        {"q": "A left shift in CBC indicates?", "opts": ["Increased immature neutrophils", "Elevated lymphocytes", "Low platelets"], "a": 0},
+        {"q": "Which parasite causes cutaneous larva migrans in humans from dogs?", "opts": ["Ancylostoma", "Toxocara", "Trichuris"], "a": 0},
+        {"q": "Most appropriate treatment for feline hyperthyroidism when renal disease precludes radioiodine?", "opts": ["Methimazole", "Thyroidectomy", "No treatment"], "a": 0},
+        {"q": "The best test for exocrine pancreatic insufficiency in dogs?", "opts": ["Serum trypsin-like immunoreactivity", "Amylase", "Lipase"], "a": 0},
+        {"q": "What is the main vector for cytauxzoonosis in cats?", "opts": ["Amblyomma americanum", "Ctenocephalides felis", "Dermacentor variabilis"], "a": 0},
+        {"q": "Which vaccine is core for ferrets?", "opts": ["Canine distemper", "Leptospirosis", "Feline leukemia"], "a": 0},
+        {"q": "Which heart murmur grade is described as loud with a precordial thrill?", "opts": ["Grade V", "Grade II", "Grade III"], "a": 0},
+        {"q": "What is the most common cause of hypercalcemia in dogs?", "opts": ["Lymphoma", "Chronic kidney disease", "Hypoadrenocorticism"], "a": 0},
+        {"q": "Which condition results in muffled heart sounds on auscultation?", "opts": ["Pericardial effusion", "Dilated cardiomyopathy", "Patent ductus arteriosus"], "a": 0},
+        {"q": "Which drug is an ACE inhibitor used for proteinuria in cats?", "opts": ["Benazepril", "Metoclopramide", "Maropitant"], "a": 0},
+        {"q": "In bovine medicine, frothy bloat is typically treated with?", "opts": ["Poloxalene", "Copper sulfate", "Magnesium hydroxide"], "a": 0},
+        {"q": "A cat with DCM due to taurine deficiency will most benefit from?", "opts": ["Taurine supplementation", "L-carnitine", "High-protein diet"], "a": 0},
+        {"q": "Which equine parasite is best controlled using ivermectin in late fall?", "opts": ["Strongylus vulgaris", "Anoplocephala perfoliata", "Oxyuris equi"], "a": 1},
+        {"q": "A dog with 'reverse sneezing' likely has irritation of?", "opts": ["Nasopharynx", "Larynx", "Trachea"], "a": 0},
+        {"q": "What is the treatment of choice for EIPH in horses?", "opts": ["Furosemide", "Dexamethasone", "Ketoprofen"], "a": 0},
+        {"q": "Which fungal pathogen causes nasal lesions in cats and is detected with latex agglutination of serum or urine?", "opts": ["Cryptococcus neoformans", "Histoplasma capsulatum", "Blastomyces dermatitidis"], "a": 0},
+        {"q": "A horse with choke is at risk for which complication?", "opts": ["Aspiration pneumonia", "Colic", "Laminitis"], "a": 0},
+        {"q": "Which diagnostic test is most sensitive for early feline renal disease?", "opts": ["SDMA", "Creatinine", "BUN"], "a": 0},
+        {"q": "In canine Lyme disease, the protein targeted by most vaccines is?", "opts": ["OspA", "OspB", "OspC"], "a": 0},
+        {"q": "Which tick transmits Babesia gibsoni?", "opts": ["Haemaphysalis longicornis", "Ixodes scapularis", "Rhipicephalus sanguineus"], "a": 2},
+        {"q": "What is the recommended therapy for equine PPID?", "opts": ["Pergolide", "Levothyroxine", "Glipizide"], "a": 0},
+        {"q": "A 'boot-shaped' heart on radiograph in dogs suggests?", "opts": ["Tetralogy of Fallot", "Pulmonic stenosis", "Atrial septal defect"], "a": 0},
+        {"q": "The presence of Heinz bodies in a cat's blood smear is most commonly due to?", "opts": ["Oxidative damage", "Iron deficiency", "Vitamin B12 deficit"], "a": 0},
+        {"q": "Which analgesic is contraindicated in cats due to methemoglobinemia risk?", "opts": ["Acetaminophen", "Buprenorphine", "Tramadol"], "a": 0},
+        {"q": "In bovine mastitis, which pathogen is associated with contagious transmission?", "opts": ["Streptococcus agalactiae", "Escherichia coli", "Pseudomonas aeruginosa"], "a": 0},
+        {"q": "What test differentiates regenerative from nonregenerative anemia in dogs?", "opts": ["Reticulocyte count", "Coombs test", "Bone marrow biopsy"], "a": 0},
+        {"q": "Which anticoagulant is used to treat feline aortic thromboembolism?", "opts": ["Clopidogrel", "Aspirin", "Apixaban"], "a": 0},
+        {"q": "The plication of small intestine is a classic sign in dogs with?", "opts": ["Linear foreign body", "Intussusception", "Parvoviral enteritis"], "a": 0},
+        {"q": "Which fluid additive is contraindicated in oliguric renal failure?", "opts": ["Potassium chloride", "Dextrose", "Sodium bicarbonate"], "a": 0},
+        {"q": "The mainstay therapy for immune-mediated hemolytic anemia is?", "opts": ["Glucocorticoids", "Antibiotics", "Chemotherapy"], "a": 0},
+        {"q": "Which vitamin deficiency is associated with pansteatitis in cats?", "opts": ["Vitamin E", "Vitamin D", "Vitamin K"], "a": 0},
+        {"q": "What is the most common clinical sign of hypothyroidism in dogs?", "opts": ["Weight gain", "Polyuria", "Coughing"], "a": 0},
+        {"q": "Which diagnostic imaging is best for detecting gallstones in dogs?", "opts": ["Ultrasound", "Radiography", "CT"], "a": 0},
     ],
 }
+
+
+def start_timer():
+    """Start the countdown timer for answering a question."""
+    global timer_thread
+    stop_timer()
+
+    def timer_task():
+        global timer_thread
+        while not timer_stop_event.is_set():
+            remaining = timer_end_time - time.time()
+            if remaining <= 0:
+                break
+            draw_question(remaining)
+            time.sleep(0.05)
+        if not timer_stop_event.is_set():
+            handle_time_up()
+        timer_thread = None
+
+    timer_stop_event.clear()
+    timer_thread = threading.Thread(target=timer_task, daemon=True)
+    timer_thread.start()
+
+
+def stop_timer():
+    """Stop the countdown timer."""
+    global timer_thread
+    if timer_thread:
+        timer_stop_event.set()
+        timer_thread.join()
+        timer_thread = None
+
+
+def handle_time_up():
+    """Handle timer expiration by marking the question wrong."""
+    global question_idx, question_offset
+    draw_feedback(False, timed_out=True)
+    time.sleep(1)
+    question_idx += 1
+    question_offset = 0
+    if question_idx >= len(quiz_questions):
+        draw_final()
+        time.sleep(3)
+        exit_cb()
+    else:
+        draw_question()
+        restart_timer()
+
+
+def restart_timer():
+    global timer_end_time
+    timer_end_time = time.time() + 5
+    start_timer()
 
 
 def init(display_func, fonts_tuple, quit_callback):
@@ -457,6 +355,7 @@ def start():
 def handle_input(pin):
     global state, current_topic, question_idx, score, quiz_questions, question_offset
     if pin == "JOY_PRESS":
+        stop_timer()
         exit_cb()
         return
     if state == "topics":
@@ -472,6 +371,7 @@ def handle_input(pin):
         question_offset = 0
         state = "question"
         draw_question()
+        restart_timer()
     elif state == "question":
         if pin == "KEY1":
             choice = 0
@@ -487,6 +387,7 @@ def handle_input(pin):
             return
         else:
             return
+        stop_timer()
         q = quiz_questions[question_idx]
         correct = choice == q["a"]
         if correct:
@@ -501,6 +402,7 @@ def handle_input(pin):
             exit_cb()
         else:
             draw_question()
+            restart_timer()
 
 
 def draw_topics():
@@ -513,7 +415,7 @@ def draw_topics():
     thread_safe_display(img)
 
 
-def draw_question():
+def draw_question(time_left=None):
     global question_line_h_small, question_line_h_medium, question_max_offset
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
@@ -544,6 +446,10 @@ def draw_question():
     for idx, opt in enumerate(q["opts"], 1):
         d.text((5, y), f"{idx}={opt}", font=fonts[0], fill=(0, 255, 255))
         y += option_line_h
+    if time_left is not None:
+        timer_text = f"{time_left:.2f}"
+        bbox = d.textbbox((0, 0), timer_text, font=fonts[1])
+        d.text((128 - bbox[2] - 5, 5), timer_text, font=fonts[1], fill=(255, 0, 0))
     thread_safe_display(img)
 
 
@@ -560,12 +466,16 @@ def scroll_question(direction):
     draw_question()
 
 
-def draw_feedback(correct):
+def draw_feedback(correct, timed_out=False):
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
-    text = "Correct!" if correct else "Wrong!"
-    color = (0, 255, 0) if correct else (255, 0, 0)
-    d.text((30, 60), text, font=fonts[1], fill=color)
+    if timed_out:
+        text = "Time's Up!"
+        color = (255, 0, 0)
+    else:
+        text = "Correct!" if correct else "Wrong!"
+        color = (0, 255, 0) if correct else (255, 0, 0)
+    d.text((25, 60), text, font=fonts[1], fill=color)
     thread_safe_display(img)
 
 
