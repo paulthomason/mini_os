@@ -211,14 +211,16 @@ def is_wifi_connected():
     return wifi_connected
 
 
-def draw_wifi_icon(draw, x, y, color=(0, 255, 0)):
-    """Draw a small Wi-Fi icon with its bottom center at (x, y)."""
-    # Center dot
-    draw.ellipse([x - 1, y - 1, x + 1, y + 1], fill=color)
-    # Three arcs above the dot with tighter spacing
-    for radius in (3, 5, 7):
-        bbox = [x - radius, y - 2 * radius, x + radius, y]
-        draw.arc(bbox, 205, 335, fill=color, width=2)
+# Load Wi-Fi icon image if available
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+os.makedirs(ASSETS_DIR, exist_ok=True)
+WIFI_ICON_PATH = os.path.join(ASSETS_DIR, "wifi.png")
+wifi_icon_img = None
+if os.path.exists(WIFI_ICON_PATH):
+    try:
+        wifi_icon_img = Image.open(WIFI_ICON_PATH).convert("RGB")
+    except Exception:
+        wifi_icon_img = None
 
 # --- Backlight Control ---
 brightness_level = 100  # Percentage 0-100
@@ -345,8 +347,15 @@ class Menu:
         if self.current_screen in ("nyt_list", "nyt_headline"):
             header_text = "NYT Top Stories"
         draw.text((5, 2), header_text, font=font_large, fill=current_color_scheme["header"])
-        if self.current_screen == "main_menu" and is_wifi_connected():
-            draw_wifi_icon(draw, DISPLAY_WIDTH - 10, 15, color=current_color_scheme["highlight_text"])
+        if (
+            self.current_screen == "main_menu"
+            and is_wifi_connected()
+            and wifi_icon_img is not None
+        ):
+            img.paste(
+                wifi_icon_img,
+                (DISPLAY_WIDTH - wifi_icon_img.width, 0),
+            )
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=current_color_scheme["text"]) # Separator line
 
         y_offset = 25
