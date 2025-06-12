@@ -1995,6 +1995,24 @@ IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
 # when no group is active.
 NOVEL_GROUP_SETS = [
     {
+        "JOY_UP": ["A", "B", "C"],
+        "JOY_DOWN": ["D", "E", "F"],
+        "JOY_LEFT": ["G", "H", "I"],
+        "JOY_RIGHT": ["J", "K", "L"],
+        "JOY_PRESS": ["M", "N", "O"],
+    },
+    {
+        "JOY_UP": ["P", "Q", "R"],
+        "JOY_DOWN": ["S", "T", "U"],
+        "JOY_LEFT": ["V", "W", "X"],
+        "JOY_RIGHT": ["Y", "Z", " "],
+        "JOY_PRESS": [".", "?", "!"],
+    },
+]
+
+# Separate layout for the shell uses lowercase letters
+SHELL_GROUP_SETS = [
+    {
         "JOY_UP": ["a", "b", "c"],
         "JOY_DOWN": ["d", "e", "f"],
         "JOY_LEFT": ["g", "h", "i"],
@@ -2370,7 +2388,7 @@ def draw_shell_screen():
         draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
         y += line_h
 
-    group_map = NOVEL_GROUP_SETS[shell_page]
+    group_map = SHELL_GROUP_SETS[shell_page]
     order = ["JOY_UP", "JOY_LEFT", "JOY_PRESS", "JOY_RIGHT", "JOY_DOWN"]
     col_w = DISPLAY_WIDTH // 5
     row_h = 10
@@ -2586,20 +2604,20 @@ def handle_shell_input(pin_name):
     global shell_page, shell_selected_group, shell_group_index, shell_text
     if pin_name in ["JOY_UP", "JOY_DOWN", "JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
         if shell_selected_group == pin_name:
-            shell_group_index = (shell_group_index + 1) % len(NOVEL_GROUP_SETS[shell_page][pin_name])
+            shell_group_index = (shell_group_index + 1) % len(SHELL_GROUP_SETS[shell_page][pin_name])
         else:
             shell_selected_group = pin_name
             shell_group_index = 0
         draw_shell_screen()
     elif pin_name == "KEY1":
         if shell_selected_group:
-            ch = NOVEL_GROUP_SETS[shell_page][shell_selected_group][shell_group_index]
+            ch = SHELL_GROUP_SETS[shell_page][shell_selected_group][shell_group_index]
             shell_text += ch
             shell_selected_group = None
             shell_group_index = 0
         draw_shell_screen()
     elif pin_name == "KEY2":
-        shell_page = (shell_page + 1) % len(NOVEL_GROUP_SETS)
+        shell_page = (shell_page + 1) % len(SHELL_GROUP_SETS)
         shell_selected_group = None
         shell_group_index = 0
         draw_shell_screen()
