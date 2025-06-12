@@ -77,13 +77,20 @@ def settings():
             if hasattr(main, "update_fonts"):
                 main.update_fonts()
 
+        scheme = request.form.get("color_scheme")
+        if scheme and hasattr(main, "COLOR_SCHEMES") and scheme in main.COLOR_SCHEMES:
+            if hasattr(main, "apply_color_scheme"):
+                main.apply_color_scheme(scheme)
+
         return redirect("/settings")
 
     brightness = getattr(main, "brightness_level", "N/A")
     font = getattr(main, "current_font_name", "N/A")
     text_size = getattr(main, "current_text_size", "N/A")
+    color_scheme = getattr(main, "current_color_scheme_name", "Default")
     fonts = getattr(main, "AVAILABLE_FONTS", {}).keys()
     sizes = getattr(main, "TEXT_SIZE_MAP", {}).keys()
+    schemes = getattr(main, "COLOR_SCHEMES", {}).keys()
 
     html = ["<h1>Settings</h1>", "<form method='post'>"]
     html.append(
@@ -98,6 +105,11 @@ def settings():
     for s in sizes:
         sel = "selected" if s == text_size else ""
         html.append(f"<option value='{s}' {sel}>{s}</option>")
+    html.append("</select><br>")
+    html.append("Color Scheme: <select name='color_scheme'>")
+    for c in schemes:
+        sel = "selected" if c == color_scheme else ""
+        html.append(f"<option value='{c}' {sel}>{c}</option>")
     html.append("</select><br>")
     html.append("<button type='submit'>Save</button></form>")
     html.append(
