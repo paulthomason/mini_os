@@ -8,8 +8,10 @@ import importlib
 import subprocess
 import pexpect
 from flask import Flask, request, redirect
+from flask_sock import Sock
 
 app = Flask(__name__)
+sock = Sock(app)
 
 # Directory for notes relative to this file
 NOTES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "notes")
@@ -17,11 +19,34 @@ os.makedirs(NOTES_DIR, exist_ok=True)
 
 NYT_API_KEY = None
 CHAT_LOG = []
-SHELL_HISTORY = []
-SERVER_RUNNING = False
-SHELL_PROC = None
-WAITING_FOR_PASSWORD = False
-_WAITING_CMD = ""
+
+
+@sock.route("/shell/ws")
+def shell_ws(ws):
+    """WebSocket endpoint for interactive shell."""
+    proc = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
+
+    def read_output():
+        try:
+            while True:
+                data = proc.read_nonblocking(size=1024, timeout=0.1)
+                if data:
+                    ws.send(data)
+        except pexpect.exceptions.EOF:
+            ws.send("\n[Process terminated]")
+        except Exception:
+            pass
+
+    t = threading.Thread(target=read_output, daemon=True)
+    t.start()
+
+    while True:
+        msg = ws.receive()
+        if msg is None:
+            break
+        proc.send(msg)
+
+    proc.close()
 
 
 def load_nyt_api_key():
@@ -174,51 +199,35 @@ def chat():
     return "\n".join(html)
 
 
-@app.route("/shell", methods=["GET", "POST"])
+@app.route("/shell")
 def shell():
-    """Simple interactive shell."""
-    global WAITING_FOR_PASSWORD, _WAITING_CMD
-    output = ""
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        cmd = request.form.get("cmd", "").strip()
-        if WAITING_FOR_PASSWORD:
-            SHELL_PROC.sendline(password)
-            try:
-                SHELL_PROC.expect("__CMD_DONE__", timeout=30)
-                output = SHELL_PROC.before
-            except pexpect.exceptions.TIMEOUT:
-                output = "Command timed out"
-            WAITING_FOR_PASSWORD = False
-            SHELL_HISTORY.append((_WAITING_CMD, output))
-            _WAITING_CMD = ""
-            return redirect("/shell")
-        if cmd:
-            SHELL_PROC.sendline(f"{cmd}; echo __CMD_DONE__")
-            try:
-                idx = SHELL_PROC.expect(["sudo password:", "__CMD_DONE__"], timeout=30)
-                output = SHELL_PROC.before + SHELL_PROC.after.replace("__CMD_DONE__", "")
-                if idx == 0:
-                    WAITING_FOR_PASSWORD = True
-                    _WAITING_CMD = cmd
-                    SHELL_HISTORY.append((cmd, output))
-                else:
-                    SHELL_HISTORY.append((cmd, output))
-            except pexpect.exceptions.TIMEOUT:
-                output = "Command timed out"
-                SHELL_HISTORY.append((cmd, output))
-            return redirect("/shell")
-
-    html = ["<h1>Shell</h1>"]
-    html.append("<form method='post'>")
-    html.append("<input name='cmd'>")
-    if WAITING_FOR_PASSWORD:
-        html.append("<input name='password' type='password' placeholder='sudo password'>")
-    html.append("<button type='submit'>Run</button></form>")
-    for cmd, out in SHELL_HISTORY[-10:]:
-        html.append(f"<h3>$ {cmd}</h3><pre>{out}</pre>")
-    html.append("<p><a href='/'>Back</a></p>")
-    return "\n".join(html)
+    """Serve interactive shell page."""
+    return """
+    <!doctype html>
+    <html>
+    <head>
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/xterm/css/xterm.css'>
+    <style>
+        body { background: black; margin: 0; }
+        #terminal { height: 100vh; width: 100%; }
+        .xterm { color: #0f0; background: black; }
+    </style>
+    </head>
+    <body>
+    <div id='terminal'></div>
+    <script src='https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js'></script>
+    <script>
+        const term = new Terminal({cursorBlink: true});
+        term.open(document.getElementById('terminal'));
+        const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const socket = new WebSocket(protocol + location.host + '/shell/ws');
+        term.onData(d => socket.send(d));
+        socket.onmessage = e => term.write(e.data);
+        socket.onclose = () => term.write('\r\n[Disconnected]');
+    </script>
+    </body>
+    </html>
+    """
 
 
 @app.route("/top-stories")
@@ -248,11 +257,7 @@ def top_stories():
 
 
 def run(host="0.0.0.0", port=8000):
-    global SERVER_RUNNING, SHELL_PROC
-    if SERVER_RUNNING:
-        return
-    SERVER_RUNNING = True
-    SHELL_PROC = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
+    """Start the web server."""
     load_nyt_api_key()
     app.run(host=host, port=port, threaded=True, use_reloader=False)
 
