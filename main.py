@@ -2361,6 +2361,7 @@ shell_text = ""
 shell_page = 0
 shell_selected_group = None
 shell_group_index = 0
+shell_keyboard_visible = True
 
 
 shell_proc = None
@@ -2381,8 +2382,8 @@ def draw_shell_screen():
     draw = ImageDraw.Draw(img)
 
     max_width = DISPLAY_WIDTH - 10
-    kb_y = DISPLAY_HEIGHT // 2
     tips_height = 10
+    kb_y = DISPLAY_HEIGHT // 2 if shell_keyboard_visible else DISPLAY_HEIGHT - tips_height
     line_h = draw.textbbox((0, 0), "A", font=font_small)[3] + 1
 
     history_lines = []
@@ -2396,26 +2397,30 @@ def draw_shell_screen():
         draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
         y += line_h
 
-    group_map = SHELL_GROUP_SETS[shell_page]
-    order = ["JOY_UP", "JOY_LEFT", "JOY_PRESS", "JOY_RIGHT", "JOY_DOWN"]
-    col_w = DISPLAY_WIDTH // 5
-    row_h = 10
-    start_y = kb_y + 2
-    for idx, g in enumerate(order):
-        letters = group_map[g]
-        x = idx * col_w + 2
-        rect = (x, start_y - 2, x + col_w - 4, DISPLAY_HEIGHT - tips_height - 2)
-        if shell_selected_group == g:
-            draw.rectangle(rect, outline=(0, 255, 0))
-        else:
-            draw.rectangle(rect, outline=(255, 255, 255))
-        for j, ch in enumerate(letters):
-            color = (0, 255, 0) if (shell_selected_group == g and j == shell_group_index) else (255, 255, 255)
-            ty = start_y + j * row_h
-            draw.text((x + 2, ty), ch, font=font_small, fill=color)
+    if shell_keyboard_visible:
+        group_map = SHELL_GROUP_SETS[shell_page]
+        order = ["JOY_UP", "JOY_LEFT", "JOY_PRESS", "JOY_RIGHT", "JOY_DOWN"]
+        col_w = DISPLAY_WIDTH // 5
+        row_h = 10
+        start_y = kb_y + 2
+        for idx, g in enumerate(order):
+            letters = group_map[g]
+            x = idx * col_w + 2
+            rect = (x, start_y - 2, x + col_w - 4, DISPLAY_HEIGHT - tips_height - 2)
+            if shell_selected_group == g:
+                draw.rectangle(rect, outline=(0, 255, 0))
+            else:
+                draw.rectangle(rect, outline=(255, 255, 255))
+            for j, ch in enumerate(letters):
+                color = (0, 255, 0) if (shell_selected_group == g and j == shell_group_index) else (255, 255, 255)
+                ty = start_y + j * row_h
+                draw.text((x + 2, ty), ch, font=font_small, fill=color)
 
-    draw.text((5, DISPLAY_HEIGHT - tips_height + 2),
-              "1=Select 2=Next 3=Enter(hold=Exit)",
+        tips = "1=Select 2=Next 3=Enter(hold=Exit)"
+    else:
+        tips = "1=Keyboard (hold KEY3 to exit)"
+
+    draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips,
               font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
@@ -2423,7 +2428,7 @@ def draw_shell_screen():
 
 def start_shell():
     """Initialize the shell input program."""
-    global shell_text, shell_page, shell_selected_group, shell_group_index, shell_proc
+    global shell_text, shell_page, shell_selected_group, shell_group_index, shell_proc, shell_keyboard_visible
     stop_scrolling()
     if shell_proc is None:
         shell_proc = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
@@ -2431,6 +2436,7 @@ def start_shell():
     shell_page = 0
     shell_selected_group = None
     shell_group_index = 0
+    shell_keyboard_visible = True
     menu_instance.current_screen = "shell"
     draw_shell_screen()
 
@@ -2503,7 +2509,7 @@ def start_sudo_password(cmd):
 
 def run_sudo_command(cmd, password):
     """Run a sudo command using the provided password."""
-    global shell_text, sudo_pending_cmd, sudo_pre_output, shell_proc, shell_lines
+    global shell_text, sudo_pending_cmd, sudo_pre_output, shell_proc, shell_lines, shell_keyboard_visible
     if shell_proc is None:
         shell_proc = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
     shell_proc.sendline(password)
@@ -2518,6 +2524,7 @@ def run_sudo_command(cmd, password):
     sudo_pending_cmd = None
     sudo_pre_output = ""
     menu_instance.current_screen = "shell"
+    shell_keyboard_visible = False
     draw_shell_screen()
 
 
@@ -2555,7 +2562,7 @@ def handle_sudo_password_input(pin_name):
 
 def run_shell_command(cmd):
     """Execute the given command in a persistent shell."""
-    global shell_text, shell_proc, shell_lines, sudo_pending_cmd, sudo_pre_output
+    global shell_text, shell_proc, shell_lines, sudo_pending_cmd, sudo_pre_output, shell_keyboard_visible
     if not cmd.strip():
         return
     if shell_proc is None:
@@ -2574,6 +2581,7 @@ def run_shell_command(cmd):
     shell_lines.append(f"$ {cmd}")
     shell_lines.extend(output.splitlines())
     shell_text = ""
+    shell_keyboard_visible = False
     draw_shell_screen()
 
 
@@ -2609,7 +2617,14 @@ def shell_enter():
 
 def handle_shell_input(pin_name):
     """Handle joystick and button input for the shell program."""
-    global shell_page, shell_selected_group, shell_group_index, shell_text
+    global shell_page, shell_selected_group, shell_group_index, shell_text, shell_keyboard_visible
+
+    if not shell_keyboard_visible:
+        if pin_name == "KEY1":
+            shell_keyboard_visible = True
+            draw_shell_screen()
+        return
+
     if pin_name in ["JOY_UP", "JOY_DOWN", "JOY_LEFT", "JOY_RIGHT", "JOY_PRESS"]:
         if shell_selected_group == pin_name:
             shell_group_index = (shell_group_index + 1) % len(SHELL_GROUP_SETS[shell_page][pin_name])
