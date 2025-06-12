@@ -812,7 +812,15 @@ def button_event_handler(channel):
     else: # Button released
         button_states[pin_name] = False
         hold_time = current_time - press_start_time.get(pin_name, current_time)
-        if menu_instance.current_screen == "shell" and pin_name == "KEY3":
+        if menu_instance.current_screen == "shell" and pin_name == "KEY1":
+            global shell_pending_char, shell_text
+            if hold_time >= 3:
+                shell_text = shell_text[:-1]
+            elif shell_pending_char:
+                shell_text += shell_pending_char
+            shell_pending_char = None
+            draw_shell_screen()
+        elif menu_instance.current_screen == "shell" and pin_name == "KEY3":
             if hold_time >= 3:
                 show_main_menu()
             else:
@@ -2362,6 +2370,7 @@ shell_page = 0
 shell_selected_group = None
 shell_group_index = 0
 shell_keyboard_visible = True
+shell_pending_char = None  # store KEY1 char until release
 
 
 shell_proc = None
@@ -2416,7 +2425,7 @@ def draw_shell_screen():
                 ty = start_y + j * row_h
                 draw.text((x + 2, ty), ch, font=font_small, fill=color)
 
-        tips = "1=Select 2=Next 3=Enter(hold=Exit)"
+        tips = "1=Select(hold=Del) 2=Next 3=Enter(hold=Exit)"
     else:
         tips = "1=Keyboard (hold KEY3 to exit)"
 
@@ -2633,11 +2642,13 @@ def handle_shell_input(pin_name):
             shell_group_index = 0
         draw_shell_screen()
     elif pin_name == "KEY1":
+        global shell_pending_char
         if shell_selected_group:
-            ch = SHELL_GROUP_SETS[shell_page][shell_selected_group][shell_group_index]
-            shell_text += ch
+            shell_pending_char = SHELL_GROUP_SETS[shell_page][shell_selected_group][shell_group_index]
             shell_selected_group = None
             shell_group_index = 0
+        else:
+            shell_pending_char = None
         draw_shell_screen()
     elif pin_name == "KEY2":
         shell_page = (shell_page + 1) % len(SHELL_GROUP_SETS)
