@@ -4,6 +4,8 @@ This repository contains a simple menu-based interface for a Raspberry Pi with a
 
 The interface now includes a Settings screen. A **Display** submenu lets you change the LCD backlight brightness, choose a different font, select a color scheme and adjust the text size. Additional menu options briefly display the current date and time, a system monitor showing CPU temperature, load, frequency, memory and disk usage, and a network info screen with the current IP address and Wi-Fi SSID. Shutdown and Reboot options are available at the bottom of the Settings screen for safely powering off or restarting the Pi. An "Update and Restart" option pulls the latest code and restarts the service so the update takes effect.
 
+The color scheme selector now includes Mac&nbsp;Terminal palettes like **Terminal Basic**, **Grass**, **Man Page**, **Novel**, **Ocean**, **Red Sands**, **Espresso**, **Homebrew** and **Pro** in addition to the default theme.
+
 Several small games are included: the reaction-based **Button Game**, the memory challenge **Launch Codes**, classics like **Snake** and **Tetris**, a simple **Rock Paper Scissors**, **Space Invaders**, and a text based adventure called **Vet Adventure**. Recent additions like **Axe**, **Trivia**, **Hack In**, and **Pico WoW** round out the selection. They can be started from the **Games** submenu and make use of the three buttons and joystick directions for input.
 
 An **Image Gallery** viewer is also included. Create an `images/` directory (the program will create it if missing) and place your 128x128 PNG or JPEG files there. When started from the menu you can flip through the pictures using the joystick left and right, and press the joystick in to return to the main menu.
