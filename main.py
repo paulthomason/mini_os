@@ -131,6 +131,33 @@ def update_fonts():
 
 update_fonts()
 
+# --- Wi-Fi Status ---
+wifi_connected = False
+_wifi_check_time = 0
+
+
+def is_wifi_connected():
+    """Return True if the system is connected to Wi-Fi."""
+    global wifi_connected, _wifi_check_time
+    if time.time() - _wifi_check_time > 5:
+        _wifi_check_time = time.time()
+        try:
+            output = subprocess.check_output(
+                ["iwgetid", "-r"], stderr=subprocess.DEVNULL
+            ).decode().strip()
+            wifi_connected = bool(output)
+        except Exception:
+            wifi_connected = False
+    return wifi_connected
+
+
+def draw_wifi_icon(draw, x, y, color=(0, 255, 0)):
+    """Draw a small Wi-Fi icon with its bottom center at (x, y)."""
+    draw.point((x, y), fill=color)
+    draw.arc([x - 2, y - 4, x + 2, y], 0, 180, fill=color)
+    draw.arc([x - 4, y - 6, x + 4, y], 0, 180, fill=color)
+    draw.arc([x - 6, y - 8, x + 6, y], 0, 180, fill=color)
+
 # --- Backlight Control ---
 brightness_level = 100  # Percentage 0-100
 backlight_pwm = None
@@ -256,6 +283,8 @@ class Menu:
         if self.current_screen in ("nyt_list", "nyt_headline"):
             header_text = "NYT Top Stories"
         draw.text((5, 2), header_text, font=font_large, fill=(0, 255, 255))
+        if self.current_screen == "main_menu" and is_wifi_connected():
+            draw_wifi_icon(draw, DISPLAY_WIDTH - 10, 12, color=(0, 255, 0))
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255)) # Separator line
 
         y_offset = 25
