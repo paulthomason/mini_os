@@ -127,6 +127,8 @@ see exactly why a device did not connect. Each failure is also saved in the
 The Bluetooth device list now uses a smaller font so long names fit on the
 screen without running off the edge. Device names are displayed before their
 Bluetooth addresses for quicker identification.
+Long device names are wrapped onto multiple lines so the full text remains
+readable.
 
 The Utilities menu also includes **Shell**, which opens the on-screen keyboard
 so you can type a command and execute it on the Pi. Press **KEY1** to cycle the
