@@ -135,8 +135,9 @@ Long device names are wrapped onto multiple lines so the full text remains
 readable.
 
 The Utilities menu also includes **Shell**, which opens the on-screen keyboard
-so you can type a command and execute it on the Pi. Press **KEY1** to cycle the
-keyboard layout, **KEY2** to delete the last character and **KEY3** to run the
-command. The output scrolls on the display and pressing **KEY3** returns to the
-prompt.
+so you can type a command and execute it on the Pi. After a command is
+submitted the keyboard hides so the output is easier to read. Press **KEY1** to
+show the keyboard again and select a character, **KEY2** to delete the last
+character and **KEY3** to run the command. Holding **KEY3** still exits back to
+the menu.
 
