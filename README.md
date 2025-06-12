@@ -132,6 +132,10 @@ Scanning now falls back to `bluetoothctl` if `hcitool` is unavailable and
 connection failures will display the full output from `bluetoothctl` so you can
 see exactly why a device did not connect. Each failure is also saved in the
 `notes` directory as `btfail1.txt`, `btfail2.txt` and so on for later review.
+While in pairing mode the system now watches the bluetooth service logs for
+incoming connection attempts. If a remote device fails to connect, the last
+log messages are written to `connectfail1.txt`, `connectfail2.txt`, etc. inside
+the `notes` directory for troubleshooting.
 
 The Bluetooth device list now uses a smaller font so long names fit on the
 screen without running off the edge. Device names are displayed before their
