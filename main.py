@@ -9,6 +9,7 @@ import random
 import threading
 import requests
 import re
+import select
 import webbrowser
 import shutil
 import socket
@@ -1248,6 +1249,7 @@ def start_bluetooth_pairing():
     bt_pairing_cancel = False
 
     def pair_thread():
+        """Run bluetoothctl and monitor output until a connection or cancel."""
         global bt_pairing_proc, bt_pairing_result
         try:
             bt_pairing_proc = subprocess.Popen(
@@ -1268,16 +1270,21 @@ def start_bluetooth_pairing():
             bt_pairing_proc.stdin.write(setup_cmds)
             bt_pairing_proc.stdin.flush()
 
-            for line in bt_pairing_proc.stdout:
-                line = line.strip()
-                if "Connection successful" in line:
-                    bt_pairing_result = True
-                    break
-                elif "Failed" in line or "failed" in line or "Error" in line:
-                    bt_pairing_result = False
-                    break
+            while True:
                 if bt_pairing_cancel:
                     break
+                rlist, _, _ = select.select([bt_pairing_proc.stdout], [], [], 0.5)
+                if rlist:
+                    line = bt_pairing_proc.stdout.readline()
+                    if not line:
+                        break
+                    line = line.strip()
+                    if "Connection successful" in line:
+                        bt_pairing_result = True
+                        break
+                    elif any(word in line for word in ["Failed", "failed", "Error"]):
+                        bt_pairing_result = False
+                        break
         except Exception:
             bt_pairing_result = False
         finally:
