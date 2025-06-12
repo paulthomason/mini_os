@@ -173,8 +173,8 @@ def draw_wifi_icon(draw, x, y, color=(0, 255, 0)):
     """Draw a small Wi-Fi icon with its bottom center at (x, y)."""
     # Center dot
     draw.ellipse([x - 1, y - 1, x + 1, y + 1], fill=color)
-    # Three arcs above the dot similar to the iPhone style icon
-    for radius in (4, 7, 10):
+    # Three arcs above the dot with tighter spacing
+    for radius in (3, 5, 7):
         bbox = [x - radius, y - 2 * radius, x + radius, y]
         draw.arc(bbox, 205, 335, fill=color, width=2)
 
@@ -304,7 +304,7 @@ class Menu:
             header_text = "NYT Top Stories"
         draw.text((5, 2), header_text, font=font_large, fill=(0, 255, 255))
         if self.current_screen == "main_menu" and is_wifi_connected():
-            draw_wifi_icon(draw, DISPLAY_WIDTH - 10, 12, color=(0, 255, 0))
+            draw_wifi_icon(draw, DISPLAY_WIDTH - 10, 15, color=(0, 255, 0))
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=(255, 255, 255)) # Separator line
 
         y_offset = 25
