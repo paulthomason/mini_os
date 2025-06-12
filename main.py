@@ -2331,6 +2331,51 @@ def save_bt_failure(details):
         pass
 
 
+def save_connect_failure(details):
+    """Save incoming bluetooth connection errors to the notes directory."""
+    pattern = re.compile(r"connectfail(\d+)\.txt")
+    try:
+        existing = [
+            int(m.group(1))
+            for m in (pattern.match(f) for f in os.listdir(NOTES_DIR))
+            if m
+        ]
+        next_num = max(existing, default=0) + 1
+        path = os.path.join(NOTES_DIR, f"connectfail{next_num}.txt")
+        with open(path, "w") as f:
+            f.write(details)
+    except Exception:
+        pass
+
+
+def start_bt_log_monitor():
+    """Watch system bluetooth logs for failed incoming connections."""
+    if not shutil.which("journalctl"):
+        return
+
+    def monitor():
+        proc = subprocess.Popen(
+            ["journalctl", "-fu", "bluetooth", "-n", "0", "--since", "now"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        buffer = []
+        for line in iter(proc.stdout.readline, ""):
+            if not line:
+                break
+            buffer.append(line.strip())
+            lower = line.lower()
+            if any(word in lower for word in ["failed", "error"]):
+                details = "\n".join(buffer[-20:])
+                save_connect_failure(details)
+                buffer = []
+
+    t = threading.Thread(target=monitor, daemon=True)
+    t.start()
+
+
+
 def show_notes_list():
     """Display a menu of saved notes."""
     stop_scrolling()
@@ -3228,6 +3273,7 @@ if __name__ == "__main__":
     menu_instance = Menu([])
     connect_irc()
     show_main_menu()
+    start_bt_log_monitor()
 
     # Attach event detection to all desired pins after the menu is ready
     for pin_name, pin_num in BUTTON_PINS.items():
