@@ -2951,6 +2951,7 @@ def show_settings_menu():
         "raspi-config",
         "Toggle Wi-Fi",
         "Shutdown",
+        "Git Pull",
         "Reboot",
         "Back",
     ]
@@ -3233,6 +3234,9 @@ def handle_settings_selection(selection):
         print("Shutting down now via systemctl poweroff.")
         subprocess.run(["sudo", "poweroff"], check=True)
         exit()
+    elif selection == "Git Pull":
+        run_git_pull()
+        show_settings_menu()
     elif selection == "Reboot":
         menu_instance.display_message_screen("System", "Rebooting...", delay=2)
         print("Rebooting now via systemctl reboot.")
