@@ -1270,6 +1270,7 @@ def start_bluetooth_pairing():
             bt_pairing_proc.stdin.write(setup_cmds)
             bt_pairing_proc.stdin.flush()
 
+            last_addr = None
             while True:
                 if bt_pairing_cancel:
                     break
@@ -1279,10 +1280,26 @@ def start_bluetooth_pairing():
                     if not line:
                         break
                     line = line.strip()
-                    if "Connection successful" in line:
+                    m = re.search(r"([0-9A-F:]{17})", line)
+                    if m:
+                        last_addr = m.group(1)
+                    lower = line.lower()
+                    if any(x in lower for x in ["confirm passkey", "request confirmation", "authorize service"]):
+                        try:
+                            bt_pairing_proc.stdin.write("yes\n")
+                            bt_pairing_proc.stdin.flush()
+                        except Exception:
+                            pass
+                    if "connection successful" in lower or "pairing successful" in lower or "paired: yes" in lower:
+                        if last_addr:
+                            try:
+                                bt_pairing_proc.stdin.write(f"trust {last_addr}\n")
+                                bt_pairing_proc.stdin.flush()
+                            except Exception:
+                                pass
                         bt_pairing_result = True
                         break
-                    elif any(word in line for word in ["Failed", "failed", "Error"]):
+                    elif any(word in lower for word in ["failed", "error"]):
                         bt_pairing_result = False
                         break
         except Exception:
