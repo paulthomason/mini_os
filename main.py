@@ -1995,17 +1995,17 @@ IRC_KEY_LAYOUT = IRC_KEY_LAYOUTS[irc_keyboard_state]
 # when no group is active.
 NOVEL_GROUP_SETS = [
     {
-        "JOY_UP": ["A", "B", "C"],
-        "JOY_DOWN": ["D", "E", "F"],
-        "JOY_LEFT": ["G", "H", "I"],
-        "JOY_RIGHT": ["J", "K", "L"],
-        "JOY_PRESS": ["M", "N", "O"],
+        "JOY_UP": ["a", "b", "c"],
+        "JOY_DOWN": ["d", "e", "f"],
+        "JOY_LEFT": ["g", "h", "i"],
+        "JOY_RIGHT": ["j", "k", "l"],
+        "JOY_PRESS": ["m", "n", "o"],
     },
     {
-        "JOY_UP": ["P", "Q", "R"],
-        "JOY_DOWN": ["S", "T", "U"],
-        "JOY_LEFT": ["V", "W", "X"],
-        "JOY_RIGHT": ["Y", "Z", " "],
+        "JOY_UP": ["p", "q", "r"],
+        "JOY_DOWN": ["s", "t", "u"],
+        "JOY_LEFT": ["v", "w", "x"],
+        "JOY_RIGHT": ["y", "z", " "],
         "JOY_PRESS": [".", "?", "!"],
     },
 ]
@@ -2389,7 +2389,7 @@ def draw_shell_screen():
             draw.text((x + 2, ty), ch, font=font_small, fill=color)
 
     draw.text((5, DISPLAY_HEIGHT - tips_height + 2),
-              "1=Select 2=Tab 3=Enter(hold=Exit)",
+              "1=Select 2=Next 3=Enter(hold=Exit)",
               font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
@@ -2599,7 +2599,10 @@ def handle_shell_input(pin_name):
             shell_group_index = 0
         draw_shell_screen()
     elif pin_name == "KEY2":
-        autocomplete_shell()
+        shell_page = (shell_page + 1) % len(NOVEL_GROUP_SETS)
+        shell_selected_group = None
+        shell_group_index = 0
+        draw_shell_screen()
 
 # --- raspi-config ---
 
