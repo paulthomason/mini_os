@@ -80,20 +80,23 @@ or run `python3 utilities/web_server.py` manually. Once running, visit
 
 ### Shell (`/shell`)
 
-The web interface provides a simple shell at `/shell`. Enter a command and press
-**Run** to execute it; output from the last few commands appears below the form.
-Commands run as the same user that started the server. If a command uses `sudo`
-and a password is required, the web page cannot supply it, so the command will
-fail unless the server was started with the necessary privileges. Exposing this
-web shell on a network lets anyone execute commands on your Pi, so only enable
-it on trusted networks or behind a firewall.
+The web interface exposes a full interactive shell using WebSockets and a
+browser-based terminal emulator. Type commands directly in the page and see
+their output immediately, just like a normal terminal. Commands run as the same
+user that started the server. If a command uses `sudo` and a password is
+required, it can be entered within the terminal. Because anyone who can access
+this page can execute commands on your Pi, enable the web server only on trusted
+networks or behind a firewall.
 
 ### Interactive Shell
 
-Opening `/shell` in a browser now provides a live Bash prompt. Commands are
-executed in a persistent shell so each one can build on the previous. If a
-command asks for a password (for example when using `sudo`), a password field
-will appear so you can respond directly in the browser.
+Opening `/shell` in a browser now presents a full terminal emulator powered by
+WebSockets. The prompt is displayed on a black background with bright green
+text and a blinking cursor to mimic the look of a native shell. Commands are
+executed in a persistent Bash process so each one builds on the previous.
+Type directly into the page and see output appear in real time. If a command
+asks for a password (for example when using `sudo`) you can provide it right in
+the terminal.
 
 **Security Warning:** anyone who can access this page can run arbitrary commands
 on your Pi. Only enable the web server on trusted networks and consider adding
