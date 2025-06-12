@@ -119,24 +119,32 @@ TEXT_SIZE_MAP = {
     "Large": (13, 15, 18),
 }
 
+font_small = None
+font_medium = None
+font_large = None
+font_tiny = None
+
 current_font_name = "DejaVu Sans"
 current_text_size = "Medium"
+TINY_FONT_SIZE = 6
 
 
 def update_fonts():
     """Reload fonts based on the selected font and size."""
-    global font_small, font_medium, font_large
+    global font_small, font_medium, font_large, font_tiny
     sizes = TEXT_SIZE_MAP.get(current_text_size, TEXT_SIZE_MAP["Medium"])
     font_path = AVAILABLE_FONTS.get(current_font_name, list(AVAILABLE_FONTS.values())[0])
     try:
         font_small = ImageFont.truetype(font_path, sizes[0])
         font_medium = ImageFont.truetype(font_path, sizes[1])
         font_large = ImageFont.truetype(font_path, sizes[2])
+        font_tiny = ImageFont.truetype(font_path, TINY_FONT_SIZE)
     except IOError:
         print("Defaulting to built-in fonts.")
         font_small = ImageFont.load_default()
         font_medium = ImageFont.load_default()
         font_large = ImageFont.load_default()
+        font_tiny = ImageFont.load_default()
 
 
 update_fonts()
@@ -621,15 +629,6 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "shell":
             if pin_name in BUTTON_PINS:
                 handle_shell_input(pin_name)
-        elif menu_instance.current_screen == "shell_output":
-            if pin_name == "JOY_UP":
-                scroll_shell_output(-1)
-            elif pin_name == "JOY_DOWN":
-                scroll_shell_output(1)
-            elif pin_name == "KEY3":
-                start_shell()
-            elif pin_name == "KEY1":
-                show_main_menu()
         elif menu_instance.current_screen == "sudo_password":
             if pin_name in BUTTON_PINS:
                 handle_sudo_password_input(pin_name)
@@ -2157,11 +2156,10 @@ shell_keyboard_state = 1  # start in lowercase
 shell_typer_row = 1
 shell_typer_col = 0
 
-shell_output_lines = []
-shell_output_line_h = 0
-shell_output_offset = 0
-shell_output_max_offset = 0
-shell_output_render = None
+
+shell_proc = None
+shell_lines = []
+sudo_pre_output = ""
 
 # Variables for sudo password prompt
 sudo_pending_cmd = None
@@ -2172,20 +2170,24 @@ sudo_pw_col = 0
 
 
 def draw_shell_screen():
-    """Render the shell input screen with onscreen keyboard."""
+    """Render the shell with history and input."""
     img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
     draw = ImageDraw.Draw(img)
 
     max_width = DISPLAY_WIDTH - 10
-    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3] + 2
-    lines = wrap_text(shell_text, font_medium, max_width, draw)
     kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
     tips_height = 10
-    max_lines = (kb_y - 10) // line_h
-    start = max(0, len(lines) - max_lines)
+    line_h = draw.textbbox((0, 0), "A", font=font_tiny)[3] + 1
+
+    history_lines = []
+    for ln in shell_lines:
+        history_lines.extend(wrap_text(ln, font_tiny, max_width, draw))
+    history_lines.extend(wrap_text(f"$ {shell_text}", font_tiny, max_width, draw))
+    max_lines = (kb_y - 5) // line_h
+    start = max(0, len(history_lines) - max_lines)
     y = 5
-    for line in lines[start:]:
-        draw.text((5, y), line, font=font_medium, fill=(255, 255, 255))
+    for line in history_lines[start:]:
+        draw.text((5, y), line, font=font_tiny, fill=(255, 255, 255))
         y += line_h
 
     row_h = (DISPLAY_HEIGHT - kb_y - tips_height) // len(KEY_LAYOUT)
@@ -2220,8 +2222,10 @@ def draw_shell_screen():
 
 def start_shell():
     """Initialize the shell input program."""
-    global shell_text, shell_keyboard_state, KEY_LAYOUT, shell_typer_row, shell_typer_col
+    global shell_text, shell_keyboard_state, KEY_LAYOUT, shell_typer_row, shell_typer_col, shell_proc
     stop_scrolling()
+    if shell_proc is None:
+        shell_proc = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
     shell_text = ""
     shell_keyboard_state = 1
     KEY_LAYOUT = KEY_LAYOUTS[shell_keyboard_state]
@@ -2231,45 +2235,6 @@ def start_shell():
     draw_shell_screen()
 
 
-def show_shell_output(cmd, output):
-    """Display command output with scrolling."""
-    global shell_output_lines, shell_output_line_h, shell_output_offset, shell_output_max_offset, shell_output_render
-    stop_scrolling()
-    menu_instance.current_screen = "shell_output"
-    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
-    dummy_draw = ImageDraw.Draw(dummy_img)
-    max_width = DISPLAY_WIDTH - 10
-    shell_output_lines = wrap_text(f"$ {cmd}\n{output}", font_small, max_width, dummy_draw)
-    shell_output_line_h = dummy_draw.textbbox((0, 0), "A", font=font_small)[3] + 2
-    shell_output_offset = 0
-    available_h = DISPLAY_HEIGHT - 35
-    shell_output_max_offset = max(0, len(shell_output_lines) * shell_output_line_h - available_h)
-
-    def render():
-        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
-        draw = ImageDraw.Draw(img)
-        draw.text((5, 5), "Shell Output", font=font_large, fill=(255, 255, 0))
-        y = 25 - shell_output_offset
-        for line in shell_output_lines:
-            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
-            y += shell_output_line_h
-        draw.text((5, DISPLAY_HEIGHT - 10), "1=Menu 3=Back", font=font_small, fill=(0, 255, 255))
-        thread_safe_display(img)
-
-    shell_output_render = render
-    shell_output_render()
-
-
-def scroll_shell_output(direction):
-    global shell_output_offset
-    if not shell_output_render:
-        return
-    shell_output_offset += direction * shell_output_line_h
-    if shell_output_offset < 0:
-        shell_output_offset = 0
-    if shell_output_offset > shell_output_max_offset:
-        shell_output_offset = shell_output_max_offset
-    shell_output_render()
 
 
 def draw_sudo_password_screen():
@@ -2338,29 +2303,22 @@ def start_sudo_password(cmd):
 
 def run_sudo_command(cmd, password):
     """Run a sudo command using the provided password."""
-    global shell_text
-    cmd_with_s = re.sub(r"^sudo\b", "sudo -S -k", cmd.strip())
+    global shell_text, sudo_pending_cmd, sudo_pre_output, shell_proc, shell_lines
+    if shell_proc is None:
+        shell_proc = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
+    shell_proc.sendline(password)
     try:
-        result = subprocess.run(
-            cmd_with_s,
-            input=password + "\n",
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=20,
-        )
-        success = result.returncode == 0
-        output = result.stdout
-    except subprocess.TimeoutExpired:
-        success = False
-        output = "Command timed out"
-    except Exception as e:
-        success = False
-        output = str(e)
+        shell_proc.expect("__CMD_DONE__", timeout=20)
+        output = sudo_pre_output + shell_proc.before
+    except pexpect.exceptions.TIMEOUT:
+        output = sudo_pre_output + "Command timed out"
+    shell_lines.append(f"$ {sudo_pending_cmd}")
+    shell_lines.extend(output.splitlines())
     shell_text = ""
-    status = "Success" if success else "Failed"
-    show_shell_output(cmd, f"{status}\n{output}")
+    sudo_pending_cmd = None
+    sudo_pre_output = ""
+    menu_instance.current_screen = "shell"
+    draw_shell_screen()
 
 
 def handle_sudo_password_input(pin_name):
@@ -2389,32 +2347,34 @@ def handle_sudo_password_input(pin_name):
         if sudo_pw_text:
             run_sudo_command(sudo_pending_cmd, sudo_pw_text)
         else:
-            show_main_menu()
+            menu_instance.current_screen = "shell"
+            draw_shell_screen()
         return
     draw_sudo_password_screen()
 
 
 def run_shell_command(cmd):
-    """Execute the given command and show its output."""
-    global shell_text
+    """Execute the given command in a persistent shell."""
+    global shell_text, shell_proc, shell_lines, sudo_pending_cmd, sudo_pre_output
     if not cmd.strip():
         return
-    if cmd.strip().startswith("sudo"):
-        shell_text = ""
-        start_sudo_password(cmd)
-        return
+    if shell_proc is None:
+        shell_proc = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
+    shell_proc.sendline(f"{cmd}; echo __CMD_DONE__")
     try:
-        output = subprocess.check_output(
-            cmd, shell=True, stderr=subprocess.STDOUT, timeout=10
-        ).decode()
-    except subprocess.TimeoutExpired:
+        idx = shell_proc.expect(["sudo password:", "__CMD_DONE__"], timeout=20)
+        output = shell_proc.before + shell_proc.after.replace("__CMD_DONE__", "")
+        if idx == 0:
+            sudo_pending_cmd = cmd
+            sudo_pre_output = output
+            start_sudo_password(cmd)
+            return
+    except pexpect.exceptions.TIMEOUT:
         output = "Command timed out"
-    except subprocess.CalledProcessError as e:
-        output = e.output.decode() if e.output else str(e)
-    except Exception as e:
-        output = str(e)
+    shell_lines.append(f"$ {cmd}")
+    shell_lines.extend(output.splitlines())
     shell_text = ""
-    show_shell_output(cmd, output)
+    draw_shell_screen()
 
 
 def handle_shell_input(pin_name):
