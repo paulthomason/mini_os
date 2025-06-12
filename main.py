@@ -2332,7 +2332,7 @@ def draw_shell_screen():
             draw.text((x + 2, ty), ch, font=font_small, fill=color)
 
     draw.text((5, DISPLAY_HEIGHT - tips_height + 2),
-              "1=Tab 2=Back 3=Enter(hold=Exit)",
+              "1=Select 2=Tab 3=Enter(hold=Exit)",
               font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
@@ -2535,10 +2535,14 @@ def handle_shell_input(pin_name):
             shell_group_index = 0
         draw_shell_screen()
     elif pin_name == "KEY1":
-        autocomplete_shell()
-    elif pin_name == "KEY2":
-        shell_text = shell_text[:-1]
+        if shell_selected_group:
+            ch = NOVEL_GROUP_SETS[shell_page][shell_selected_group][shell_group_index]
+            shell_text += ch
+            shell_selected_group = None
+            shell_group_index = 0
         draw_shell_screen()
+    elif pin_name == "KEY2":
+        autocomplete_shell()
 
 # --- raspi-config ---
 
