@@ -1512,11 +1512,10 @@ def start_chat():
     irc_input_text = ""
     draw_chat_screen()
 
-def run_system_monitor(duration=10):
-    """Display CPU temperature, load and memory usage for a few seconds."""
-    end_time = time.time() + duration
+def run_system_monitor():
+    """Continuously display CPU temperature, load and memory usage until the user exits."""
     next_update = 0
-    while time.time() < end_time:
+    while True:
         if button_states.get("KEY3"):
             break
         now = time.time()
@@ -1578,7 +1577,7 @@ def run_system_monitor(duration=10):
                 draw.text((5, 55), "Freq: N/A", font=font_medium, fill=(255, 255, 255))
             draw.text((5, 70), f"Mem: {mem_str}", font=font_medium, fill=(255, 255, 255))
             draw.text((5, 85), f"Disk: {disk_str}", font=font_medium, fill=(255, 255, 255))
-            draw.text((5, DISPLAY_HEIGHT - 10), "1=Menu 3=Back", font=font_small, fill=(0, 255, 255))
+            draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
             thread_safe_display(img)
         time.sleep(0.1)
     menu_instance.clear_display()
@@ -1611,8 +1610,8 @@ def show_date_time(duration=10):
     menu_instance.clear_display()
     show_utilities_menu()
 
-def show_network_info(duration=10):
-    """Display basic network information such as IP address and Wi-Fi SSID."""
+def show_network_info():
+    """Display basic network information until the user exits."""
     try:
         ip_output = subprocess.check_output(["hostname", "-I"]).decode().strip()
         ip_addr = ip_output if ip_output else "N/A"
@@ -1625,9 +1624,8 @@ def show_network_info(duration=10):
     except Exception:
         ssid = "N/A"
 
-    end_time = time.time() + duration
     next_update = 0
-    while time.time() < end_time:
+    while True:
         if button_states.get("KEY3"):
             break
         now = time.time()
