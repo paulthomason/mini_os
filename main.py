@@ -12,6 +12,7 @@ import re
 import webbrowser
 import shutil
 import socket
+import json
 import pexpect
 from games import (
     snake,
@@ -244,6 +245,7 @@ def apply_color_scheme(name):
     if name in COLOR_SCHEMES:
         current_color_scheme = COLOR_SCHEMES[name]
         current_color_scheme_name = name
+        save_settings()
         if menu_instance:
             menu_instance.draw()
 
@@ -294,6 +296,32 @@ gallery_index = 0
 # --- Notes Directory ---
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "notes")
 os.makedirs(NOTES_DIR, exist_ok=True)
+
+# Configuration file for persisting settings like color scheme
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
+
+
+def save_settings():
+    """Persist current settings to disk."""
+    try:
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump({"color_scheme": current_color_scheme_name}, f)
+    except Exception as e:
+        print(f"Failed to save settings: {e}")
+
+
+def load_settings():
+    """Load settings from disk if available."""
+    if not os.path.exists(SETTINGS_FILE):
+        return
+    try:
+        with open(SETTINGS_FILE) as f:
+            data = json.load(f)
+        scheme = data.get("color_scheme")
+        if scheme in COLOR_SCHEMES:
+            apply_color_scheme(scheme)
+    except Exception as e:
+        print(f"Failed to load settings: {e}")
 
 # --- IRC Chat ---
 IRC_SERVER = "192.168.0.81"
@@ -2935,6 +2963,7 @@ def handle_menu_selection(selection):
 
 # --- Main Execution ---
 if __name__ == "__main__":
+    load_settings()
     menu_instance = Menu([])
     connect_irc()
     show_main_menu()
