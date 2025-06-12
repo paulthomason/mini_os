@@ -163,10 +163,12 @@ def is_wifi_connected():
 
 def draw_wifi_icon(draw, x, y, color=(0, 255, 0)):
     """Draw a small Wi-Fi icon with its bottom center at (x, y)."""
-    draw.point((x, y), fill=color)
-    draw.arc([x - 2, y - 4, x + 2, y], 0, 180, fill=color)
-    draw.arc([x - 4, y - 6, x + 4, y], 0, 180, fill=color)
-    draw.arc([x - 6, y - 8, x + 6, y], 0, 180, fill=color)
+    # Center dot
+    draw.ellipse([x - 1, y - 1, x + 1, y + 1], fill=color)
+    # Three arcs above the dot similar to the iPhone style icon
+    for radius in (4, 7, 10):
+        bbox = [x - radius, y - 2 * radius, x + radius, y]
+        draw.arc(bbox, 205, 335, fill=color, width=2)
 
 # --- Backlight Control ---
 brightness_level = 100  # Percentage 0-100
