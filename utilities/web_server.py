@@ -227,7 +227,9 @@ def shell():
         socket.onopen = () => term.focus();
         term.onData(d => socket.send(d));
         socket.onmessage = e => term.write(e.data);
-        socket.onclose = () => term.write('\r\n[Disconnected]');
+        // Send a CRLF sequence when the WebSocket closes
+        // Use double escaping so the JS string contains "\\r\\n"
+        socket.onclose = () => term.write("\\r\\n[Disconnected]");
     </script>
     </body>
     </html>
