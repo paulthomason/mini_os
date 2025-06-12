@@ -24,7 +24,10 @@ CHAT_LOG = []
 @sock.route("/shell/ws")
 def shell_ws(ws):
     """WebSocket endpoint for interactive shell."""
-    proc = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False)
+    # Start Bash in interactive mode so prompts display correctly
+    proc = pexpect.spawn("/bin/bash", ["-i"], encoding="utf-8", echo=False)
+    # Ensure an initial prompt appears
+    proc.sendline("")
 
     def read_output():
         try:
@@ -221,6 +224,7 @@ def shell():
         term.open(document.getElementById('terminal'));
         const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
         const socket = new WebSocket(protocol + location.host + '/shell/ws');
+        socket.onopen = () => term.focus();
         term.onData(d => socket.send(d));
         socket.onmessage = e => term.write(e.data);
         socket.onclose = () => term.write('\r\n[Disconnected]');
