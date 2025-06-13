@@ -1799,6 +1799,30 @@ def start_web_server():
         )
         show_utilities_menu()
 
+def start_mini_games():
+    """Launch the web-based mini games."""
+    try:
+        ip_output = subprocess.check_output(["hostname", "-I"]).decode().strip()
+        ip_addr = ip_output.split()[0] if ip_output else "localhost"
+    except Exception:
+        ip_addr = "localhost"
+
+    try:
+        from utilities import web_server
+        threading.Thread(target=web_server.run, daemon=True).start()
+    except Exception:
+        pass
+
+    try:
+        webbrowser.open(f"http://{ip_addr}:8000/mini-games")
+    except Exception:
+        pass
+
+    menu_instance.display_message_screen(
+        "Mini Games", f"Open http://{ip_addr}:8000/mini-games", delay=4
+    )
+    show_games_menu()
+
 # --- Reaction Game ---
 
 def draw_game_screen(prompt, time_left=None):
@@ -3104,6 +3128,7 @@ def show_games_menu():
         "Axe",
         "Trivia",
         "Two Player Trivia",
+        "Mini Games",
         "Hack In",
         "Pico WoW",
         "GTA 1997",
@@ -3145,6 +3170,9 @@ def handle_games_selection(selection):
         return
     elif selection == "Two Player Trivia":
         start_two_player_trivia()
+        return
+    elif selection == "Mini Games":
+        start_mini_games()
         return
     elif selection == "Hack In":
         start_hack_in()

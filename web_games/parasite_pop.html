@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Parasite Pop</title>
+  <style>
+    body { text-align: center; font-family: sans-serif; background:#fffbe0; }
+    canvas { border:1px solid #ccc; display:block; margin:10px auto; background:#ffffe8; }
+  </style>
+</head>
+<body>
+  <h1>Parasite Pop</h1>
+  <canvas id="game" width="400" height="400"></canvas>
+  <p id="status">Score: 0 | Time: 30</p>
+  <script>
+    const canvas=document.getElementById('game');
+    const ctx=canvas.getContext('2d');
+    let bugs=[];
+    let score=0;
+    let time=30;
+    canvas.addEventListener('click',e=>{
+      const rect=canvas.getBoundingClientRect();
+      const x=e.clientX-rect.left;
+      const y=e.clientY-rect.top;
+      for(let i=0;i<bugs.length;i++){
+        const b=bugs[i];
+        const dx=x-b.x; const dy=y-b.y;
+        if(Math.sqrt(dx*dx+dy*dy)<b.r){ bugs.splice(i,1); i--; score++; }
+      }
+    });
+    function spawn(){
+      bugs.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:15,t:0});
+    }
+    function update(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='green';
+      for(let i=0;i<bugs.length;i++){
+        const b=bugs[i]; b.t++; if(b.t>100){ bugs.splice(i,1); i--; continue; }
+        ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+      }
+      ctx.fillStyle='black'; ctx.font='16px sans-serif';
+      ctx.fillText('Score:'+score,10,20); ctx.fillText('Time:'+time,canvas.width-80,20);
+    }
+    function countdown(){ time--; document.getElementById('status').textContent='Score: '+score+' | Time: '+time; if(time<=0){ clearInterval(loop); clearInterval(spawner); clearInterval(timer); alert('Final score: '+score); }}
+    const loop=setInterval(update,50);
+    const spawner=setInterval(spawn,600);
+    const timer=setInterval(countdown,1000);
+  </script>
+  <p><a href="index.html">Back</a></p>
+</body>
+</html>

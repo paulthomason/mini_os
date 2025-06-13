@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Canine Kidney Catch</title>
+  <style>
+    body { text-align: center; font-family: sans-serif; background:#f0faff; }
+    canvas { border:1px solid #ccc; display:block; margin:10px auto; background:#e0f7ff; }
+  </style>
+</head>
+<body>
+  <h1>Canine Kidney Catch</h1>
+  <canvas id="game" width="400" height="400"></canvas>
+  <p id="status">Score: 0 | Time: 30</p>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const dog = {x: canvas.width/2-20, y: canvas.height-40, w:40, h:20};
+    const kidneys = [];
+    let score = 0;
+    let time = 30;
+    document.addEventListener('keydown', e => {
+      if(e.key==='ArrowLeft') dog.x = Math.max(0, dog.x-20);
+      if(e.key==='ArrowRight') dog.x = Math.min(canvas.width-dog.w, dog.x+20);
+    });
+    function spawnKidney(){
+      kidneys.push({x: Math.random()*(canvas.width-10), y:0});
+    }
+    function update(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='brown';
+      ctx.fillRect(dog.x,dog.y,dog.w,dog.h);
+      ctx.fillStyle='red';
+      for(let i=0;i<kidneys.length;i++){
+        const k=kidneys[i];
+        k.y+=3;
+        ctx.fillRect(k.x,k.y,10,15);
+        if(k.y>canvas.height){ kidneys.splice(i,1); i--; continue; }
+        if(k.x<dog.x+dog.w && k.x+10>dog.x && k.y<dog.y+dog.h && k.y+15>dog.y){
+          kidneys.splice(i,1); i--; score++; }
+      }
+      ctx.fillStyle='black';
+      ctx.font='16px sans-serif';
+      ctx.fillText('Score:'+score,10,20);
+      ctx.fillText('Time:'+time, canvas.width-80,20);
+    }
+    function countdown(){
+      time--; document.getElementById('status').textContent='Score: '+score+' | Time: '+time;
+      if(time<=0){ clearInterval(timer); clearInterval(loop); clearInterval(spawner); alert('Final score: '+score); }
+    }
+    const loop=setInterval(update,50);
+    const spawner=setInterval(spawnKidney,800);
+    const timer=setInterval(countdown,1000);
+  </script>
+  <p><a href="index.html">Back</a></p>
+</body>
+</html>
