@@ -701,6 +701,17 @@ def button_event_handler(channel):
                 handle_color_scheme_selection(menu_instance.get_selected_item())
             elif pin_name == "KEY1":
                 show_display_menu()
+        elif menu_instance.current_screen == "console_color_scheme_menu":
+            if pin_name == "JOY_UP":
+                menu_instance.navigate("up")
+            elif pin_name == "JOY_DOWN":
+                menu_instance.navigate("down")
+            elif pin_name == "JOY_PRESS":
+                handle_console_color_scheme_selection(
+                    menu_instance.get_selected_item()
+                )
+            elif pin_name == "KEY1":
+                start_console()
         elif menu_instance.current_screen == "wifi_list":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -925,6 +936,13 @@ def button_event_handler(channel):
                     autocomplete_shell()
                 else:
                     shell_enter()
+        elif (
+            menu_instance.current_screen == "shell"
+            and console_mode
+            and pin_name == "JOY_PRESS"
+        ):
+            if hold_time >= 1:
+                show_console_color_scheme_menu()
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
     
     last_event_time[pin_name] = current_time
@@ -2906,7 +2924,9 @@ sudo_pw_col = 0
 
 def draw_shell_screen():
     """Render the shell with history and input using the novel keyboard."""
-    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    img = Image.new(
+        "RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=current_color_scheme["background"]
+    )
     draw = ImageDraw.Draw(img)
 
     max_width = DISPLAY_WIDTH - 10
@@ -2923,7 +2943,9 @@ def draw_shell_screen():
     start = max(0, len(history_lines) - max_lines)
     y = 5
     for line in history_lines[start:]:
-        draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+        draw.text(
+            (5, y), line, font=font_small, fill=current_color_scheme["text"]
+        )
         y += line_h
 
     if shell_keyboard_visible:
@@ -2950,8 +2972,12 @@ def draw_shell_screen():
         tips = "1=Keyboard (3L Exit)"
 
     if not console_mode:
-        draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips,
-                  font=font_small, fill=(0, 255, 255))
+        draw.text(
+            (5, DISPLAY_HEIGHT - tips_height + 2),
+            tips,
+            font=font_small,
+            fill=current_color_scheme["header"],
+        )
 
     thread_safe_display(img)
 
@@ -3403,6 +3429,25 @@ def handle_color_scheme_selection(selection):
     apply_color_scheme(selection)
     menu_instance.display_message_screen("Color Scheme", f"{selection} selected", delay=2)
     show_display_menu()
+
+
+def show_console_color_scheme_menu():
+    """Color scheme picker when using the console."""
+    stop_scrolling()
+    menu_instance.items = list(COLOR_SCHEMES.keys()) + ["Back"]
+    menu_instance.selected_item = 0
+    menu_instance.view_start = 0
+    menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
+    menu_instance.current_screen = "console_color_scheme_menu"
+    menu_instance.draw()
+
+
+def handle_console_color_scheme_selection(selection):
+    if selection == "Back":
+        start_console()
+        return
+    apply_color_scheme(selection)
+    start_console()
 
 
 def show_bluetooth_menu():
