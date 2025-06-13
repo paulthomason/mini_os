@@ -1831,16 +1831,32 @@ def fetch_weather_data(zip_code):
         return None
 
     current = data.get("current", {})
-    temp = current.get("temperature_2m")
+    temp_c = current.get("temperature_2m")
+    temp = temp_c * 9 / 5 + 32 if temp_c is not None else None
     code = current.get("weathercode")
     desc = WEATHER_CODES.get(code, f"Code {code}")
     daily = data.get("daily", {})
     high = None
     low = None
+    forecast = []
     if daily.get("temperature_2m_max") and daily.get("temperature_2m_min"):
-        high = daily["temperature_2m_max"][0]
-        low = daily["temperature_2m_min"][0]
-    return {"temp": temp, "desc": desc, "high": high, "low": low}
+        highs_c = daily["temperature_2m_max"]
+        lows_c = daily["temperature_2m_min"]
+        high = highs_c[0] * 9 / 5 + 32
+        low = lows_c[0] * 9 / 5 + 32
+        for date, hi_c, lo_c in zip(daily.get("time", []), highs_c, lows_c):
+            forecast.append({
+                "date": date,
+                "high": hi_c * 9 / 5 + 32,
+                "low": lo_c * 9 / 5 + 32,
+            })
+    return {
+        "temp": temp,
+        "desc": desc,
+        "high": high,
+        "low": low,
+        "forecast": forecast,
+    }
 
 
 def draw_weather_screen():
@@ -1857,7 +1873,7 @@ def draw_weather_screen():
     draw.text((5, 5), f"Weather {zip_code}", font=font_large, fill=(255, 255, 0))
     y = 25
     if data and data["temp"] is not None:
-        draw.text((5, y), f"Temp: {data['temp']:.1f}C", font=font_medium, fill=(255, 255, 255))
+        draw.text((5, y), f"Temp: {data['temp']:.1f}F", font=font_medium, fill=(255, 255, 255))
     else:
         draw.text((5, y), "Temp: N/A", font=font_medium, fill=(255, 255, 255))
     y += line_h + 2
@@ -1867,10 +1883,21 @@ def draw_weather_screen():
         if data["high"] is not None and data["low"] is not None:
             draw.text(
                 (5, y),
-                f"H:{data['high']:.1f}C L:{data['low']:.1f}C",
+                f"H:{data['high']:.1f}F L:{data['low']:.1f}F",
                 font=font_medium,
                 fill=(255, 255, 255),
             )
+            y += line_h + 2
+        if data.get("forecast"):
+            for fc in data["forecast"][1:3]:
+                date = fc["date"][5:]
+                draw.text(
+                    (5, y),
+                    f"{date} {fc['high']:.0f}/{fc['low']:.0f}F",
+                    font=font_small,
+                    fill=(255, 255, 255),
+                )
+                y += draw.textbbox((0, 0), "A", font=font_small)[3] + 2
     draw.text((5, DISPLAY_HEIGHT - 10), "R=Next 1=Add 3=Back", font=font_small, fill=(0, 255, 255))
     thread_safe_display(img)
 

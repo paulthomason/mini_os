@@ -341,16 +341,26 @@ def fetch_weather_data(zip_code):
         return None
 
     current = data.get("current", {})
-    temp = current.get("temperature_2m")
+    temp_c = current.get("temperature_2m")
+    temp = temp_c * 9 / 5 + 32 if temp_c is not None else None
     code = current.get("weathercode")
     desc = WEATHER_CODES.get(code, f"Code {code}")
     daily = data.get("daily", {})
     high = None
     low = None
+    forecast = []
     if daily.get("temperature_2m_max") and daily.get("temperature_2m_min"):
-        high = daily["temperature_2m_max"][0]
-        low = daily["temperature_2m_min"][0]
-    return {"temp": temp, "desc": desc, "code": code, "high": high, "low": low}
+        highs_c = daily["temperature_2m_max"]
+        lows_c = daily["temperature_2m_min"]
+        high = highs_c[0] * 9 / 5 + 32
+        low = lows_c[0] * 9 / 5 + 32
+        for date, hi_c, lo_c in zip(daily.get("time", []), highs_c, lows_c):
+            forecast.append({
+                "date": date,
+                "high": hi_c * 9 / 5 + 32,
+                "low": lo_c * 9 / 5 + 32,
+            })
+    return {"temp": temp, "desc": desc, "code": code, "high": high, "low": low, "forecast": forecast}
 
 
 @app.route("/weather")
@@ -363,10 +373,10 @@ def weather():
 
     icon = WEATHER_EMOJI.get(data["code"], "") if data else ""
     desc = data["desc"] if data else "N/A"
-    temp = f"{data['temp']:.1f}C" if data and data["temp"] is not None else "N/A"
+    temp = f"{data['temp']:.1f}F" if data and data["temp"] is not None else "N/A"
     hi_lo = ""
     if data and data["high"] is not None and data["low"] is not None:
-        hi_lo = f"H:{data['high']:.1f}C L:{data['low']:.1f}C"
+        hi_lo = f"H:{data['high']:.1f}F L:{data['low']:.1f}F"
 
     html = [
         "<!doctype html>",
@@ -386,6 +396,13 @@ def weather():
         html.append(f"<p>Temp: {temp}</p>")
         if hi_lo:
             html.append(f"<p>{hi_lo}</p>")
+        if data.get("forecast"):
+            html.append("<h2>Forecast</h2><ul>")
+            for fc in data["forecast"][1:4]:
+                html.append(
+                    f"<li>{fc['date']}: H {fc['high']:.1f}F L {fc['low']:.1f}F</li>"
+                )
+            html.append("</ul>")
     else:
         html.append("<p>Failed to fetch weather data.</p>")
     html.append("<p><a href='/'>Back</a></p>")
