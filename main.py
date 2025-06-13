@@ -110,6 +110,11 @@ timer_thread = None
 timer_stop_event = threading.Event()
 timer_end_time = 0
 
+# Blinking cursor support for the shell/console
+cursor_thread = None
+cursor_stop_event = threading.Event()
+cursor_visible = True
+
 # --- Fonts ---
 # Support choosing different fonts and text sizes.
 AVAILABLE_FONTS = {
@@ -841,17 +846,29 @@ def button_event_handler(channel):
         hold_time = current_time - press_start_time.get(pin_name, current_time)
         if menu_instance.current_screen == "shell" and pin_name == "KEY1":
             global shell_pending_char, shell_text
-            if hold_time >= 3:
+            if hold_time >= 1:
                 shell_text = shell_text[:-1]
             elif shell_pending_char:
                 shell_text += shell_pending_char
             shell_pending_char = None
             draw_shell_screen()
+        elif menu_instance.current_screen == "shell" and pin_name == "KEY2":
+            if hold_time >= 1:
+                global shell_keyboard_visible
+                shell_keyboard_visible = False
+            else:
+                shell_page = (shell_page + 1) % len(SHELL_GROUP_SETS)
+                shell_selected_group = None
+                shell_group_index = 0
+            draw_shell_screen()
         elif menu_instance.current_screen == "shell" and pin_name == "KEY3":
-            if hold_time >= 3:
+            if hold_time >= 1:
                 show_main_menu()
             else:
-                shell_enter()
+                if console_mode:
+                    autocomplete_shell()
+                else:
+                    shell_enter()
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
     
     last_event_time[pin_name] = current_time
@@ -1886,6 +1903,34 @@ def stop_timer():
         timer_thread = None
 
 
+def start_cursor():
+    """Start blinking cursor thread for the shell."""
+    global cursor_thread
+    stop_cursor()
+
+    def cursor_task():
+        global cursor_thread, cursor_visible
+        while not cursor_stop_event.is_set():
+            cursor_visible = not cursor_visible
+            draw_shell_screen()
+            time.sleep(0.5)
+
+        cursor_thread = None
+
+    cursor_stop_event.clear()
+    cursor_thread = threading.Thread(target=cursor_task, daemon=True)
+    cursor_thread.start()
+
+
+def stop_cursor():
+    """Stop the blinking cursor."""
+    global cursor_thread
+    if cursor_thread:
+        cursor_stop_event.set()
+        cursor_thread.join()
+        cursor_thread = None
+
+
 def start_button_game():
     """Begin the button reaction game."""
     global game_round, game_score
@@ -2613,14 +2658,15 @@ def draw_shell_screen():
     draw = ImageDraw.Draw(img)
 
     max_width = DISPLAY_WIDTH - 10
-    tips_height = 10
+    tips_height = 0 if console_mode else 10
     kb_y = DISPLAY_HEIGHT // 2 if shell_keyboard_visible else DISPLAY_HEIGHT - tips_height
     line_h = draw.textbbox((0, 0), "A", font=font_small)[3] + 1
 
     history_lines = []
     for ln in shell_lines:
         history_lines.extend(wrap_text(ln, font_small, max_width, draw))
-    history_lines.extend(wrap_text(f"$ {shell_text}", font_small, max_width, draw))
+    cursor = "_" if cursor_visible else " "
+    history_lines.extend(wrap_text(f"$ {shell_text}{cursor}", font_small, max_width, draw))
     max_lines = (kb_y - 5) // line_h
     start = max(0, len(history_lines) - max_lines)
     y = 5
@@ -2647,12 +2693,13 @@ def draw_shell_screen():
                 ty = start_y + j * row_h
                 draw.text((x + 2, ty), ch, font=font_small, fill=color)
 
-        tips = "1=Select(hold=Del) 2=Next 3=Enter(hold=Exit)"
+        tips = "1S=Select 1L=Del 2S=Next 2L=Hide 3S=Run 3L=Exit"
     else:
-        tips = "1=Keyboard (hold KEY3 to exit)"
+        tips = "1=Keyboard (3L Exit)"
 
-    draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips,
-              font=font_small, fill=(0, 255, 255))
+    if not console_mode:
+        draw.text((5, DISPLAY_HEIGHT - tips_height + 2), tips,
+                  font=font_small, fill=(0, 255, 255))
 
     thread_safe_display(img)
 
@@ -2670,6 +2717,7 @@ def start_shell(show_keyboard=True):
     shell_keyboard_visible = show_keyboard
     menu_instance.current_screen = "shell"
     draw_shell_screen()
+    start_cursor()
 
 
 def start_console():
@@ -2736,6 +2784,7 @@ def start_sudo_password(cmd):
     """Prompt the user to enter the sudo password."""
     global sudo_pending_cmd, sudo_pw_text, sudo_pw_keyboard_state, KEY_LAYOUT, sudo_pw_row, sudo_pw_col
     stop_scrolling()
+    stop_cursor()
     sudo_pending_cmd = cmd
     sudo_pw_text = ""
     sudo_pw_keyboard_state = 1
@@ -2765,6 +2814,7 @@ def run_sudo_command(cmd, password):
     menu_instance.current_screen = "shell"
     shell_keyboard_visible = False
     draw_shell_screen()
+    start_cursor()
 
 
 def handle_sudo_password_input(pin_name):
@@ -2795,6 +2845,7 @@ def handle_sudo_password_input(pin_name):
         else:
             menu_instance.current_screen = "shell"
             draw_shell_screen()
+            start_cursor()
         return
     draw_sudo_password_screen()
 
@@ -2882,11 +2933,6 @@ def handle_shell_input(pin_name):
             shell_group_index = 0
         else:
             shell_pending_char = None
-        draw_shell_screen()
-    elif pin_name == "KEY2":
-        shell_page = (shell_page + 1) % len(SHELL_GROUP_SETS)
-        shell_selected_group = None
-        shell_group_index = 0
         draw_shell_screen()
 
 # --- raspi-config ---
@@ -3266,6 +3312,7 @@ def handle_utilities_selection(selection):
 def show_main_menu():
     global console_mode
     console_mode = False
+    stop_cursor()
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.items = [
