@@ -254,26 +254,19 @@ QUESTIONS = {
         {"q": "Most appropriate treatment for feline hyperthyroidism when renal disease precludes radioiodine?", "opts": ["Methimazole", "Thyroidectomy", "No treatment"], "a": 0},
         {"q": "The best test for exocrine pancreatic insufficiency in dogs?", "opts": ["Serum trypsin-like immunoreactivity", "Amylase", "Lipase"], "a": 0},
         {"q": "What is the main vector for cytauxzoonosis in cats?", "opts": ["Amblyomma americanum", "Ctenocephalides felis", "Dermacentor variabilis"], "a": 0},
-        {"q": "Which vaccine is core for ferrets?", "opts": ["Canine distemper", "Leptospirosis", "Feline leukemia"], "a": 0},
         {"q": "Which heart murmur grade is described as loud with a precordial thrill?", "opts": ["Grade V", "Grade II", "Grade III"], "a": 0},
         {"q": "What is the most common cause of hypercalcemia in dogs?", "opts": ["Lymphoma", "Chronic kidney disease", "Hypoadrenocorticism"], "a": 0},
         {"q": "Which condition results in muffled heart sounds on auscultation?", "opts": ["Pericardial effusion", "Dilated cardiomyopathy", "Patent ductus arteriosus"], "a": 0},
         {"q": "Which drug is an ACE inhibitor used for proteinuria in cats?", "opts": ["Benazepril", "Metoclopramide", "Maropitant"], "a": 0},
-        {"q": "In bovine medicine, frothy bloat is typically treated with?", "opts": ["Poloxalene", "Copper sulfate", "Magnesium hydroxide"], "a": 0},
         {"q": "A cat with DCM due to taurine deficiency will most benefit from?", "opts": ["Taurine supplementation", "L-carnitine", "High-protein diet"], "a": 0},
-        {"q": "Which equine parasite is best controlled using ivermectin in late fall?", "opts": ["Strongylus vulgaris", "Anoplocephala perfoliata", "Oxyuris equi"], "a": 1},
         {"q": "A dog with 'reverse sneezing' likely has irritation of?", "opts": ["Nasopharynx", "Larynx", "Trachea"], "a": 0},
-        {"q": "What is the treatment of choice for EIPH in horses?", "opts": ["Furosemide", "Dexamethasone", "Ketoprofen"], "a": 0},
         {"q": "Which fungal pathogen causes nasal lesions in cats and is detected with latex agglutination of serum or urine?", "opts": ["Cryptococcus neoformans", "Histoplasma capsulatum", "Blastomyces dermatitidis"], "a": 0},
-        {"q": "A horse with choke is at risk for which complication?", "opts": ["Aspiration pneumonia", "Colic", "Laminitis"], "a": 0},
         {"q": "Which diagnostic test is most sensitive for early feline renal disease?", "opts": ["SDMA", "Creatinine", "BUN"], "a": 0},
         {"q": "In canine Lyme disease, the protein targeted by most vaccines is?", "opts": ["OspA", "OspB", "OspC"], "a": 0},
         {"q": "Which tick transmits Babesia gibsoni?", "opts": ["Haemaphysalis longicornis", "Ixodes scapularis", "Rhipicephalus sanguineus"], "a": 2},
-        {"q": "What is the recommended therapy for equine PPID?", "opts": ["Pergolide", "Levothyroxine", "Glipizide"], "a": 0},
         {"q": "A 'boot-shaped' heart on radiograph in dogs suggests?", "opts": ["Tetralogy of Fallot", "Pulmonic stenosis", "Atrial septal defect"], "a": 0},
         {"q": "The presence of Heinz bodies in a cat's blood smear is most commonly due to?", "opts": ["Oxidative damage", "Iron deficiency", "Vitamin B12 deficit"], "a": 0},
         {"q": "Which analgesic is contraindicated in cats due to methemoglobinemia risk?", "opts": ["Acetaminophen", "Buprenorphine", "Tramadol"], "a": 0},
-        {"q": "In bovine mastitis, which pathogen is associated with contagious transmission?", "opts": ["Streptococcus agalactiae", "Escherichia coli", "Pseudomonas aeruginosa"], "a": 0},
         {"q": "What test differentiates regenerative from nonregenerative anemia in dogs?", "opts": ["Reticulocyte count", "Coombs test", "Bone marrow biopsy"], "a": 0},
         {"q": "Which anticoagulant is used to treat feline aortic thromboembolism?", "opts": ["Clopidogrel", "Aspirin", "Apixaban"], "a": 0},
         {"q": "The plication of small intestine is a classic sign in dogs with?", "opts": ["Linear foreign body", "Intussusception", "Parvoviral enteritis"], "a": 0},
@@ -282,6 +275,21 @@ QUESTIONS = {
         {"q": "Which vitamin deficiency is associated with pansteatitis in cats?", "opts": ["Vitamin E", "Vitamin D", "Vitamin K"], "a": 0},
         {"q": "What is the most common clinical sign of hypothyroidism in dogs?", "opts": ["Weight gain", "Polyuria", "Coughing"], "a": 0},
         {"q": "Which diagnostic imaging is best for detecting gallstones in dogs?", "opts": ["Ultrasound", "Radiography", "CT"], "a": 0},
+        {"q": "Which breed is predisposed to copper-associated hepatitis due to COMMD1 mutation?", "opts": ["Bedlington Terrier", "Boxer", "Poodle"], "a": 0},
+        {"q": "Which medication is contraindicated in cats due to risk of esophageal strictures?", "opts": ["Doxycycline tablets", "Metronidazole", "Clindamycin liquid"], "a": 0},
+        {"q": "What is the recommended initial treatment for feline urethral obstruction?", "opts": ["Urethral catheterization", "Perineal urethrostomy", "Renal transplantation"], "a": 0},
+        {"q": "Which endocrine disorder in dogs commonly causes a 'potbelly' appearance?", "opts": ["Hyperadrenocorticism", "Hypothyroidism", "Diabetes insipidus"], "a": 0},
+        {"q": "What is the drug of choice for acute management of status epilepticus in dogs?", "opts": ["Diazepam", "Phenobarbital", "Levetiracetam"], "a": 0},
+        {"q": "In cats, what is the most sensitive test for diagnosing pancreatitis?", "opts": ["Spec fPL", "Amylase", "Trypsin-like immunoreactivity"], "a": 0},
+        {"q": "Which metabolic abnormality is most often seen with feline diabetic ketoacidosis?", "opts": ["Metabolic acidosis", "Metabolic alkalosis", "Respiratory alkalosis"], "a": 0},
+        {"q": "What is the best method to prevent recurrence of calcium oxalate uroliths in dogs?", "opts": ["Dietary citrate and water intake", "High protein diet", "Calcium supplements"], "a": 0},
+        {"q": "Which cat breed is commonly affected by polycystic kidney disease due to PKD1 mutation?", "opts": ["Persian", "Siamese", "Maine Coon"], "a": 0},
+        {"q": "A dog diagnosed with degenerative mitral valve disease most benefits from which medication initially?", "opts": ["Pimobendan", "Digoxin", "Atenolol"], "a": 0},
+        {"q": "Which antifungal is preferred for treating feline sporotrichosis?", "opts": ["Itraconazole", "Ketoconazole", "Fluconazole"], "a": 0},
+        {"q": "What bloodwork abnormality is classic for ethylene glycol toxicity in dogs?", "opts": ["High anion gap metabolic acidosis", "Thrombocytosis", "Hypoglycemia"], "a": 0},
+        {"q": "Which antibiotic is recommended for treatment of feline Mycoplasma haemofelis?", "opts": ["Doxycycline", "Penicillin", "Cephalexin"], "a": 0},
+        {"q": "What vaccination is recommended annually for cats at risk of upper respiratory disease?", "opts": ["FVRCP", "Rabies", "Panleukopenia only"], "a": 0},
+        {"q": "Which parasitic infection leads to ocular migrans in humans from dogs?", "opts": ["Toxocara canis", "Ancylostoma caninum", "Trichuris vulpis"], "a": 0},
     ],
 }
 
@@ -320,7 +328,9 @@ def stop_timer():
 def handle_time_up():
     """Handle timer expiration by marking the question wrong."""
     global question_idx, question_offset
-    draw_feedback(False, timed_out=True)
+    q = quiz_questions[question_idx]
+    correct_opt = q["opts"][q["a"]]
+    draw_feedback(False, timed_out=True, correct_opt=correct_opt)
     time.sleep(1)
     question_idx += 1
     question_offset = 0
@@ -390,9 +400,10 @@ def handle_input(pin):
         stop_timer()
         q = quiz_questions[question_idx]
         correct = choice == q["a"]
+        correct_opt = q["opts"][q["a"]]
         if correct:
             score += 1
-        draw_feedback(correct)
+        draw_feedback(correct, correct_opt=correct_opt)
         time.sleep(1)
         question_idx += 1
         question_offset = 0
@@ -459,7 +470,7 @@ def scroll_question(direction):
     draw_question()
 
 
-def draw_feedback(correct, timed_out=False):
+def draw_feedback(correct, timed_out=False, correct_opt=None):
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
     if timed_out:
@@ -468,7 +479,9 @@ def draw_feedback(correct, timed_out=False):
     else:
         text = "Correct!" if correct else "Wrong!"
         color = (0, 255, 0) if correct else (255, 0, 0)
-    d.text((25, 60), text, font=fonts[1], fill=color)
+    d.text((25, 50), text, font=fonts[1], fill=color)
+    if not correct and correct_opt:
+        d.text((10, 80), f"Ans: {correct_opt}", font=fonts[0], fill=(255, 255, 0))
     thread_safe_display(img)
 
 
