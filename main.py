@@ -23,6 +23,7 @@ from games import (
     vet_adventure,
     axe,
     trivia,
+    two_player_trivia,
     hack_in,
     pico_wow,
     gta_1997,
@@ -797,6 +798,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "trivia":
             if pin_name in BUTTON_PINS:
                 handle_trivia_input(pin_name)
+        elif menu_instance.current_screen == "two_player_trivia":
+            if pin_name in BUTTON_PINS:
+                handle_two_player_trivia_input(pin_name)
         elif menu_instance.current_screen == "hack_in":
             if pin_name in BUTTON_PINS:
                 handle_hack_in_input(pin_name)
@@ -2066,6 +2070,18 @@ def start_trivia():
 def handle_trivia_input(pin_name):
     trivia.handle_input(pin_name)
 
+# --- Two Player Trivia Game ---
+
+def start_two_player_trivia():
+    stop_scrolling()
+    two_player_trivia.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "two_player_trivia"
+    two_player_trivia.start()
+
+
+def handle_two_player_trivia_input(pin_name):
+    two_player_trivia.handle_input(pin_name)
+
 # --- Pico WoW Game ---
 
 def start_pico_wow():
@@ -3087,6 +3103,7 @@ def show_games_menu():
         "Vet Adventure",
         "Axe",
         "Trivia",
+        "Two Player Trivia",
         "Hack In",
         "Pico WoW",
         "GTA 1997",
@@ -3125,6 +3142,9 @@ def handle_games_selection(selection):
         return
     elif selection == "Trivia":
         start_trivia()
+        return
+    elif selection == "Two Player Trivia":
+        start_two_player_trivia()
         return
     elif selection == "Hack In":
         start_hack_in()
