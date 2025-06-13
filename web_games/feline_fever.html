@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Feline Fever Finder</title>
+  <style>
+    body { text-align: center; font-family: sans-serif; background: #fffaf8; }
+    canvas { border: 1px solid #ccc; display: block; margin: 10px auto; background: #ffeeee; }
+  </style>
+</head>
+<body>
+  <h1>Feline Fever Finder</h1>
+  <canvas id="game" width="400" height="400"></canvas>
+  <p id="status">Score: 0 | Time: 30</p>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    let score = 0;
+    let time = 30;
+    const size = 40;
+    let cat = {x: Math.random()*(canvas.width-size), y: Math.random()*(canvas.height-size)};
+
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = 'orange';
+      ctx.fillRect(cat.x, cat.y, size, size);
+      ctx.fillStyle = 'black';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('Score: '+score, 10, 20);
+      ctx.fillText('Time: '+time, canvas.width-80, 20);
+    }
+
+    function moveCat() {
+      cat.x = Math.random()*(canvas.width-size);
+      cat.y = Math.random()*(canvas.height-size);
+    }
+
+    canvas.addEventListener('click', e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (x > cat.x && x < cat.x+size && y > cat.y && y < cat.y+size) {
+        score++;
+        moveCat();
+        draw();
+      }
+    });
+
+    function countdown() {
+      time--;
+      document.getElementById('status').textContent = 'Score: '+score+' | Time: '+time;
+      if (time <= 0) {
+        clearInterval(timer);
+        clearInterval(catTimer);
+        alert('Time\'s up! Your score: '+score);
+      }
+    }
+
+    draw();
+    const timer = setInterval(countdown, 1000);
+    const catTimer = setInterval(() => { moveCat(); draw(); }, 1000);
+  </script>
+  <p><a href="index.html">Back</a></p>
+</body>
+</html>

@@ -7,7 +7,7 @@ import threading
 import importlib
 import subprocess
 import pexpect
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, send_from_directory
 from flask_sock import Sock
 
 app = Flask(__name__)
@@ -20,6 +20,8 @@ os.makedirs(NOTES_DIR, exist_ok=True)
 NYT_API_KEY = None
 CHAT_LOG = []
 
+WEB_GAMES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web_games")
+os.makedirs(WEB_GAMES_DIR, exist_ok=True)
 
 @sock.route("/shell/ws")
 def shell_ws(ws):
@@ -72,6 +74,7 @@ def index():
         "<li><a href='/chat'>Chat</a></li>"
         "<li><a href='/shell'>Shell</a></li>"
         "<li><a href='/top-stories'>Top Stories</a></li>"
+        "<li><a href='/mini-games'>Mini Games</a></li>"
         "</ul>"
     )
 
@@ -236,6 +239,17 @@ def shell():
     </html>
     """
 
+
+@app.route("/mini-games")
+def mini_games_index():
+    """Serve the mini games menu page."""
+    return send_from_directory(WEB_GAMES_DIR, "index.html")
+
+
+@app.route("/mini-games/<path:filename>")
+def mini_games_static(filename):
+    """Serve static files for mini games."""
+    return send_from_directory(WEB_GAMES_DIR, filename)
 
 @app.route("/top-stories")
 def top_stories():
