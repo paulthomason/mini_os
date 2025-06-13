@@ -143,6 +143,7 @@ Bluetooth addresses for quicker identification.
 Long device names are wrapped onto multiple lines so the full text remains
 readable.
 
+
 The Utilities menu also includes **Shell**, which opens the on-screen keyboard
 so you can type a command and execute it on the Pi. After a command is
 submitted the keyboard hides so the output is easier to read. Press **KEY1** to
@@ -152,6 +153,13 @@ the menu.
 
 There's also a lightweight **Console** option that keeps a persistent Bash
 session running and logs all output to `logs/console.log`. It starts with the
-keyboard hidden so more of the 128×128 display can show command output. Press
-**KEY1** to reveal the keyboard when you need to type a new command.
+keyboard hidden so more of the 128×128 display can show command output. The
+bottom button hints are removed to maximize text area and a blinking cursor
+shows where input will appear. Short presses last under one second while long
+presses are held longer. The button functions are:
+
+`1S` select highlighted character, `1L` backspace,
+`2S` page characters, `2L` hide keyboard,
+`3S` tab autocomplete and `3L` exit the console.
+Press **KEY1** to reveal the keyboard when hidden.
 
