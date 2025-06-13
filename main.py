@@ -2596,6 +2596,8 @@ shell_pending_char = None  # store KEY1 char until release
 shell_proc = None
 shell_lines = []
 sudo_pre_output = ""
+console_mode = False
+console_log_path = os.path.join(os.path.dirname(__file__), "logs", "console.log")
 
 # Variables for sudo password prompt
 sudo_pending_cmd = None
@@ -2655,7 +2657,7 @@ def draw_shell_screen():
     thread_safe_display(img)
 
 
-def start_shell():
+def start_shell(show_keyboard=True):
     """Initialize the shell input program."""
     global shell_text, shell_page, shell_selected_group, shell_group_index, shell_proc, shell_keyboard_visible
     stop_scrolling()
@@ -2665,9 +2667,17 @@ def start_shell():
     shell_page = 0
     shell_selected_group = None
     shell_group_index = 0
-    shell_keyboard_visible = True
+    shell_keyboard_visible = show_keyboard
     menu_instance.current_screen = "shell"
     draw_shell_screen()
+
+
+def start_console():
+    """Launch a minimalist console that logs output."""
+    global console_mode
+    console_mode = True
+    os.makedirs(os.path.join(os.path.dirname(__file__), "logs"), exist_ok=True)
+    start_shell(show_keyboard=False)
 
 
 
@@ -2809,6 +2819,9 @@ def run_shell_command(cmd):
         output = "Command timed out"
     shell_lines.append(f"$ {cmd}")
     shell_lines.extend(output.splitlines())
+    if console_mode:
+        with open(console_log_path, "a") as f:
+            f.write(f"$ {cmd}\n{output}\n")
     shell_text = ""
     shell_keyboard_visible = False
     draw_shell_screen()
@@ -3222,6 +3235,7 @@ def show_utilities_menu():
         "Show Info",
         "Web Server",
         "Shell",
+        "Console",
         "Back",
     ]
     menu_instance.selected_item = 0
@@ -3243,11 +3257,15 @@ def handle_utilities_selection(selection):
         start_web_server()
     elif selection == "Shell":
         start_shell()
+    elif selection == "Console":
+        start_console()
     elif selection == "Back":
         show_main_menu()
 
 
 def show_main_menu():
+    global console_mode
+    console_mode = False
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.items = [

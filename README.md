@@ -150,3 +150,8 @@ show the keyboard again and select a character, **KEY2** to delete the last
 character and **KEY3** to run the command. Holding **KEY3** still exits back to
 the menu.
 
+There's also a lightweight **Console** option that keeps a persistent Bash
+session running and logs all output to `logs/console.log`. It starts with the
+keyboard hidden so more of the 128×128 display can show command output. Press
+**KEY1** to reveal the keyboard when you need to type a new command.
+
