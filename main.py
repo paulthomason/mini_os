@@ -282,6 +282,38 @@ def is_wifi_connected():
 brightness_level = 100  # Percentage 0-100
 backlight_pwm = None
 
+# --- Weather Codes ---
+WEATHER_CODES = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    56: "Light freezing drizzle",
+    57: "Freezing drizzle",
+    61: "Slight rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    66: "Light freezing rain",
+    67: "Freezing rain",
+    71: "Slight snow",
+    73: "Moderate snow",
+    75: "Heavy snow",
+    77: "Snow grains",
+    80: "Rain showers",
+    81: "Rain showers",
+    82: "Violent rain showers",
+    85: "Snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm w/ hail",
+    99: "Thunderstorm w/ hail",
+}
+
 # --- NYT Top Stories ---
 nyt_stories = []
 current_story_index = 0
@@ -1755,6 +1787,58 @@ def show_date_time(duration=10):
         time.sleep(1)
     menu_instance.clear_display()
     show_utilities_menu()
+
+
+def show_weather(duration=10):
+    """Display weather for ZIP 97222 using Open-Meteo."""
+    stop_scrolling()
+    url = (
+        "https://api.open-meteo.com/v1/forecast?latitude=45.43&longitude=-122.64"
+        "&current=temperature_2m,weathercode&daily=temperature_2m_max,temperature_2m_min"
+        "&timezone=America%2FLos_Angeles"
+    )
+    try:
+        resp = requests.get(url, timeout=5)
+        data = resp.json()
+        current = data.get("current", {})
+        temp = current.get("temperature_2m")
+        code = current.get("weathercode")
+        desc = WEATHER_CODES.get(code, f"Code {code}")
+        daily = data.get("daily", {})
+        high = None
+        low = None
+        if daily.get("temperature_2m_max") and daily.get("temperature_2m_min"):
+            high = daily["temperature_2m_max"][0]
+            low = daily["temperature_2m_min"][0]
+    except Exception:
+        menu_instance.display_message_screen("Weather", "Failed to fetch", delay=3)
+        show_main_menu()
+        return
+
+    end_time = time.time() + duration
+    line_h = ImageDraw.Draw(Image.new("RGB", (1, 1))).textbbox((0, 0), "A", font=font_medium)[3]
+    while time.time() < end_time:
+        if button_states.get("KEY3"):
+            break
+        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+        draw = ImageDraw.Draw(img)
+        draw.text((5, 5), "Weather", font=font_large, fill=(255, 255, 0))
+        y = 25
+        if temp is not None:
+            draw.text((5, y), f"Temp: {temp:.1f}C", font=font_medium, fill=(255, 255, 255))
+        else:
+            draw.text((5, y), "Temp: N/A", font=font_medium, fill=(255, 255, 255))
+        y += line_h + 2
+        draw.text((5, y), desc, font=font_medium, fill=(255, 255, 255))
+        y += line_h + 2
+        if high is not None and low is not None:
+            draw.text((5, y), f"H:{high:.1f}C L:{low:.1f}C", font=font_medium, fill=(255, 255, 255))
+        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
+        thread_safe_display(img)
+        time.sleep(1)
+
+    menu_instance.clear_display()
+    show_main_menu()
 
 def show_network_info():
     """Display basic network information until the user exits."""
@@ -3322,6 +3406,7 @@ def show_main_menu():
         "Chat",
         "Image Gallery",
         "Utilities",
+        "Weather",
         "Top Stories",
         "Settings",
     ]
@@ -3375,6 +3460,9 @@ def handle_menu_selection(selection):
         return
     elif selection == "Utilities":
         show_utilities_menu()
+    elif selection == "Weather":
+        show_weather()
+        return
     elif selection == "Top Stories":
         show_top_stories()
         return
