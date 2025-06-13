@@ -73,6 +73,7 @@ def index():
         "<li><a href='/notes'>Notes</a></li>"
         "<li><a href='/chat'>Chat</a></li>"
         "<li><a href='/shell'>Shell</a></li>"
+        "<li><a href='/weather'>Weather</a></li>"
         "<li><a href='/top-stories'>Top Stories</a></li>"
         "<li><a href='/mini-games'>Mini Games</a></li>"
         "</ul>"
@@ -250,6 +251,146 @@ def mini_games_index():
 def mini_games_static(filename):
     """Serve static files for mini games."""
     return send_from_directory(WEB_GAMES_DIR, filename)
+
+
+# --- Weather Page Helpers ---
+WEATHER_CODES = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    56: "Light freezing drizzle",
+    57: "Freezing drizzle",
+    61: "Slight rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    66: "Light freezing rain",
+    67: "Freezing rain",
+    71: "Slight snow",
+    73: "Moderate snow",
+    75: "Heavy snow",
+    77: "Snow grains",
+    80: "Rain showers",
+    81: "Rain showers",
+    82: "Violent rain showers",
+    85: "Snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm w/ hail",
+    99: "Thunderstorm w/ hail",
+}
+
+WEATHER_EMOJI = {
+    0: "☀️",
+    1: "🌤️",
+    2: "⛅",
+    3: "☁️",
+    45: "🌫️",
+    48: "🌫️",
+    51: "🌧️",
+    53: "🌧️",
+    55: "🌧️",
+    56: "🌧️",
+    57: "🌧️",
+    61: "🌧️",
+    63: "🌧️",
+    65: "🌧️",
+    66: "🌧️",
+    67: "🌧️",
+    71: "❄️",
+    73: "❄️",
+    75: "❄️",
+    77: "❄️",
+    80: "🌧️",
+    81: "🌧️",
+    82: "🌧️",
+    85: "❄️",
+    86: "❄️",
+    95: "⛈️",
+    96: "⛈️",
+    99: "⛈️",
+}
+
+
+def fetch_weather_data(zip_code):
+    """Fetch weather info for a US ZIP code using open-meteo."""
+    try:
+        import requests
+        r = requests.get(f"https://api.zippopotam.us/us/{zip_code}", timeout=5)
+        loc = r.json()
+        place = loc["places"][0]
+        lat = place["latitude"]
+        lon = place["longitude"]
+    except Exception:
+        return None
+
+    url = (
+        f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
+        "&current=temperature_2m,weathercode&daily=temperature_2m_max,temperature_2m_min"
+        "&timezone=America%2FLos_Angeles"
+    )
+    try:
+        import requests
+        data = requests.get(url, timeout=5).json()
+    except Exception:
+        return None
+
+    current = data.get("current", {})
+    temp = current.get("temperature_2m")
+    code = current.get("weathercode")
+    desc = WEATHER_CODES.get(code, f"Code {code}")
+    daily = data.get("daily", {})
+    high = None
+    low = None
+    if daily.get("temperature_2m_max") and daily.get("temperature_2m_min"):
+        high = daily["temperature_2m_max"][0]
+        low = daily["temperature_2m_min"][0]
+    return {"temp": temp, "desc": desc, "code": code, "high": high, "low": low}
+
+
+@app.route("/weather")
+def weather():
+    """Display basic weather info for a ZIP code."""
+    main = importlib.import_module("__main__")
+    zips = getattr(main, "WEATHER_ZIPS", ["97222"])
+    zip_code = request.args.get("zip", zips[0])
+    data = fetch_weather_data(zip_code)
+
+    icon = WEATHER_EMOJI.get(data["code"], "") if data else ""
+    desc = data["desc"] if data else "N/A"
+    temp = f"{data['temp']:.1f}C" if data and data["temp"] is not None else "N/A"
+    hi_lo = ""
+    if data and data["high"] is not None and data["low"] is not None:
+        hi_lo = f"H:{data['high']:.1f}C L:{data['low']:.1f}C"
+
+    html = [
+        "<!doctype html>",
+        "<html>",
+        "<head>",
+        "<meta charset='utf-8'>",
+        "<title>Weather</title>",
+        "<style>body{font-family:Arial, sans-serif;background:#111;color:#eee;padding:1em;}"
+        ".icon{font-size:64px;}</style>",
+        "</head>",
+        "<body>",
+        f"<h1>Weather {zip_code}</h1>",
+    ]
+    if data:
+        html.append(f"<div class='icon'>{icon}</div>")
+        html.append(f"<p>{desc}</p>")
+        html.append(f"<p>Temp: {temp}</p>")
+        if hi_lo:
+            html.append(f"<p>{hi_lo}</p>")
+    else:
+        html.append("<p>Failed to fetch weather data.</p>")
+    html.append("<p><a href='/'>Back</a></p>")
+    html.append("</body></html>")
+    return "\n".join(html)
 
 @app.route("/top-stories")
 def top_stories():
