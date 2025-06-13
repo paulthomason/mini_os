@@ -23,6 +23,10 @@ CHAT_LOG = []
 WEB_GAMES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web_games")
 os.makedirs(WEB_GAMES_DIR, exist_ok=True)
 
+# Directory for static assets used by the web interface
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(STATIC_DIR, exist_ok=True)
+
 @sock.route("/shell/ws")
 def shell_ws(ws):
     """WebSocket endpoint for interactive shell."""
@@ -213,7 +217,7 @@ def shell():
     <!doctype html>
     <html>
     <head>
-    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/xterm/css/xterm.css'>
+    <link rel='stylesheet' href='/static/xterm.css'>
     <style>
         body { background: black; margin: 0; }
         #terminal { height: 100vh; width: 100%; }
@@ -222,7 +226,7 @@ def shell():
     </head>
     <body>
     <div id='terminal'></div>
-    <script src='https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js'></script>
+    <script src='/static/xterm.js'></script>
     <script>
         const term = new Terminal({cursorBlink: true});
         term.open(document.getElementById('terminal'));
@@ -251,6 +255,12 @@ def mini_games_index():
 def mini_games_static(filename):
     """Serve static files for mini games."""
     return send_from_directory(WEB_GAMES_DIR, filename)
+
+
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    """Serve static assets like JavaScript and CSS."""
+    return send_from_directory(STATIC_DIR, filename)
 
 
 # --- Weather Page Helpers ---
