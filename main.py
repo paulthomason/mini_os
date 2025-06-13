@@ -314,6 +314,20 @@ WEATHER_CODES = {
     99: "Thunderstorm w/ hail",
 }
 
+# --- Weather Locations ---
+WEATHER_ZIPS = ["97222", "97134"]
+weather_zip_index = 0
+weather_cache = {}
+ZIP_KEYPAD = [
+    ["1", "2", "3"],
+    ["4", "5", "6"],
+    ["7", "8", "9"],
+    ["0"],
+]
+zip_input_text = ""
+zip_row = 0
+zip_col = 0
+
 # --- NYT Top Stories ---
 nyt_stories = []
 current_story_index = 0
@@ -751,6 +765,12 @@ def button_event_handler(channel):
                 handle_utilities_selection(menu_instance.get_selected_item())
             elif pin_name == "KEY1":
                 show_main_menu()
+        elif menu_instance.current_screen == "weather":
+            if pin_name in BUTTON_PINS:
+                handle_weather_input(pin_name)
+        elif menu_instance.current_screen == "zip_entry":
+            if pin_name in BUTTON_PINS:
+                handle_zip_entry_input(pin_name)
         elif menu_instance.current_screen == "notes_menu":
             if pin_name == "JOY_UP":
                 menu_instance.navigate("up")
@@ -1789,56 +1809,161 @@ def show_date_time(duration=10):
     show_utilities_menu()
 
 
-def show_weather(duration=10):
-    """Display weather for ZIP 97222 using Open-Meteo."""
-    stop_scrolling()
+def fetch_weather_data(zip_code):
+    """Fetch weather information for the given US ZIP code."""
+    try:
+        r = requests.get(f"https://api.zippopotam.us/us/{zip_code}", timeout=5)
+        loc = r.json()
+        place = loc["places"][0]
+        lat = place["latitude"]
+        lon = place["longitude"]
+    except Exception:
+        return None
+
     url = (
-        "https://api.open-meteo.com/v1/forecast?latitude=45.43&longitude=-122.64"
+        f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
         "&current=temperature_2m,weathercode&daily=temperature_2m_max,temperature_2m_min"
         "&timezone=America%2FLos_Angeles"
     )
     try:
-        resp = requests.get(url, timeout=5)
-        data = resp.json()
-        current = data.get("current", {})
-        temp = current.get("temperature_2m")
-        code = current.get("weathercode")
-        desc = WEATHER_CODES.get(code, f"Code {code}")
-        daily = data.get("daily", {})
-        high = None
-        low = None
-        if daily.get("temperature_2m_max") and daily.get("temperature_2m_min"):
-            high = daily["temperature_2m_max"][0]
-            low = daily["temperature_2m_min"][0]
+        data = requests.get(url, timeout=5).json()
     except Exception:
-        menu_instance.display_message_screen("Weather", "Failed to fetch", delay=3)
-        show_main_menu()
+        return None
+
+    current = data.get("current", {})
+    temp = current.get("temperature_2m")
+    code = current.get("weathercode")
+    desc = WEATHER_CODES.get(code, f"Code {code}")
+    daily = data.get("daily", {})
+    high = None
+    low = None
+    if daily.get("temperature_2m_max") and daily.get("temperature_2m_min"):
+        high = daily["temperature_2m_max"][0]
+        low = daily["temperature_2m_min"][0]
+    return {"temp": temp, "desc": desc, "high": high, "low": low}
+
+
+def draw_weather_screen():
+    """Render weather for the selected ZIP code."""
+    zip_code = WEATHER_ZIPS[weather_zip_index]
+    data = weather_cache.get(zip_code)
+    if not data:
+        data = fetch_weather_data(zip_code)
+        if data:
+            weather_cache[zip_code] = data
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    line_h = draw.textbbox((0, 0), "A", font=font_medium)[3]
+    draw.text((5, 5), f"Weather {zip_code}", font=font_large, fill=(255, 255, 0))
+    y = 25
+    if data and data["temp"] is not None:
+        draw.text((5, y), f"Temp: {data['temp']:.1f}C", font=font_medium, fill=(255, 255, 255))
+    else:
+        draw.text((5, y), "Temp: N/A", font=font_medium, fill=(255, 255, 255))
+    y += line_h + 2
+    if data:
+        draw.text((5, y), data["desc"], font=font_medium, fill=(255, 255, 255))
+        y += line_h + 2
+        if data["high"] is not None and data["low"] is not None:
+            draw.text(
+                (5, y),
+                f"H:{data['high']:.1f}C L:{data['low']:.1f}C",
+                font=font_medium,
+                fill=(255, 255, 255),
+            )
+    draw.text((5, DISPLAY_HEIGHT - 10), "R=Next 1=Add 3=Back", font=font_small, fill=(0, 255, 255))
+    thread_safe_display(img)
+
+
+def draw_zip_entry_screen():
+    """Render the numeric keypad for adding a ZIP code."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    draw.text((5, 5), "New ZIP", font=font_large, fill=(255, 255, 0))
+    draw.text((5, 25), zip_input_text, font=font_medium, fill=(255, 255, 255))
+
+    start_y = 45
+    row_h = (DISPLAY_HEIGHT - start_y - 15) // len(ZIP_KEYPAD)
+    key_w = DISPLAY_WIDTH // 3
+    for r, row in enumerate(ZIP_KEYPAD):
+        offset_x = (DISPLAY_WIDTH - len(row) * key_w) // 2
+        for c, ch in enumerate(row):
+            x = offset_x + c * key_w
+            y = start_y + r * row_h
+            rect = (x + 1, y + 1, x + key_w - 2, y + row_h - 2)
+            if r == zip_row and c == zip_col:
+                draw.rectangle(rect, fill=(0, 255, 0))
+                color = (0, 0, 0)
+            else:
+                draw.rectangle(rect, outline=(255, 255, 255))
+                color = (255, 255, 255)
+            bbox = draw.textbbox((0, 0), ch, font=font_medium)
+            tx = x + (key_w - (bbox[2] - bbox[0])) // 2
+            ty = y + (row_h - (bbox[3] - bbox[1])) // 2
+            draw.text((tx, ty), ch, font=font_medium, fill=color)
+
+    draw.text((5, DISPLAY_HEIGHT - 10), "1=Del 2=OK 3=Cancel", font=font_small, fill=(0, 255, 255))
+    thread_safe_display(img)
+
+
+def start_zip_entry():
+    """Begin entering a new ZIP code."""
+    global zip_input_text, zip_row, zip_col
+    zip_input_text = ""
+    zip_row = 0
+    zip_col = 0
+    menu_instance.current_screen = "zip_entry"
+    draw_zip_entry_screen()
+
+
+def handle_zip_entry_input(pin_name):
+    """Process input while entering a ZIP code."""
+    global zip_row, zip_col, zip_input_text, weather_zip_index
+    if pin_name == "JOY_LEFT" and zip_col > 0:
+        zip_col -= 1
+    elif pin_name == "JOY_RIGHT" and zip_col < len(ZIP_KEYPAD[zip_row]) - 1:
+        zip_col += 1
+    elif pin_name == "JOY_UP" and zip_row > 0:
+        zip_row -= 1
+        zip_col = min(zip_col, len(ZIP_KEYPAD[zip_row]) - 1)
+    elif pin_name == "JOY_DOWN" and zip_row < len(ZIP_KEYPAD) - 1:
+        zip_row += 1
+        zip_col = min(zip_col, len(ZIP_KEYPAD[zip_row]) - 1)
+    elif pin_name == "JOY_PRESS":
+        zip_input_text += ZIP_KEYPAD[zip_row][zip_col]
+    elif pin_name == "KEY1":
+        zip_input_text = zip_input_text[:-1]
+    elif pin_name == "KEY2":
+        if zip_input_text.isdigit() and len(zip_input_text) == 5:
+            WEATHER_ZIPS.append(zip_input_text)
+            weather_zip_index = len(WEATHER_ZIPS) - 1
+            menu_instance.current_screen = "weather"
+            draw_weather_screen()
+            return
+    elif pin_name == "KEY3":
+        menu_instance.current_screen = "weather"
+        draw_weather_screen()
         return
+    draw_zip_entry_screen()
 
-    end_time = time.time() + duration
-    line_h = ImageDraw.Draw(Image.new("RGB", (1, 1))).textbbox((0, 0), "A", font=font_medium)[3]
-    while time.time() < end_time:
-        if button_states.get("KEY3"):
-            break
-        img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
-        draw = ImageDraw.Draw(img)
-        draw.text((5, 5), "Weather", font=font_large, fill=(255, 255, 0))
-        y = 25
-        if temp is not None:
-            draw.text((5, y), f"Temp: {temp:.1f}C", font=font_medium, fill=(255, 255, 255))
-        else:
-            draw.text((5, y), "Temp: N/A", font=font_medium, fill=(255, 255, 255))
-        y += line_h + 2
-        draw.text((5, y), desc, font=font_medium, fill=(255, 255, 255))
-        y += line_h + 2
-        if high is not None and low is not None:
-            draw.text((5, y), f"H:{high:.1f}C L:{low:.1f}C", font=font_medium, fill=(255, 255, 255))
-        draw.text((5, DISPLAY_HEIGHT - 10), "3=Back", font=font_small, fill=(0, 255, 255))
-        thread_safe_display(img)
-        time.sleep(1)
 
-    menu_instance.clear_display()
-    show_main_menu()
+def show_weather():
+    """Enter the interactive weather view."""
+    stop_scrolling()
+    menu_instance.current_screen = "weather"
+    draw_weather_screen()
+
+
+def handle_weather_input(pin_name):
+    """Handle joystick and button input for the weather screen."""
+    global weather_zip_index
+    if pin_name == "JOY_RIGHT":
+        weather_zip_index = (weather_zip_index + 1) % len(WEATHER_ZIPS)
+        draw_weather_screen()
+    elif pin_name == "KEY1":
+        start_zip_entry()
+    elif pin_name == "KEY3":
+        show_main_menu()
 
 def show_network_info():
     """Display basic network information until the user exits."""
