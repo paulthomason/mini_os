@@ -9,6 +9,7 @@ from . import (
     hack_in,
     pico_wow,
     gta_1997,
+    doctor_mode,
 )
 __all__ = [
     "snake",
@@ -21,4 +22,5 @@ __all__ = [
     "hack_in",
     "pico_wow",
     "gta_1997",
+    "doctor_mode",
 ]

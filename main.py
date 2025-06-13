@@ -27,6 +27,7 @@ from games import (
     hack_in,
     pico_wow,
     gta_1997,
+    doctor_mode,
 )
 
 # Luma.lcd imports and setup
@@ -867,6 +868,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "gta_1997":
             if pin_name in BUTTON_PINS:
                 handle_gta_1997_input(pin_name)
+        elif menu_instance.current_screen == "doctor_mode":
+            if pin_name in BUTTON_PINS:
+                handle_doctor_mode_input(pin_name)
         elif menu_instance.current_screen == "notes":
             if pin_name in BUTTON_PINS:
                 handle_notes_input(pin_name)
@@ -2396,6 +2400,18 @@ def start_gta_1997():
 def handle_gta_1997_input(pin_name):
     gta_1997.handle_input(pin_name)
 
+# --- Doctor Mode ---
+
+def start_doctor_mode():
+    stop_scrolling()
+    doctor_mode.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
+    menu_instance.current_screen = "doctor_mode"
+    doctor_mode.start()
+
+
+def handle_doctor_mode_input(pin_name):
+    doctor_mode.handle_input(pin_name)
+
 # --- Notes Program ---
 
 notes_text = ""
@@ -3386,6 +3402,7 @@ def show_games_menu():
     stop_scrolling()
     menu_instance.max_visible_items = compute_max_visible_items(menu_instance.font)
     menu_instance.items = [
+        "Doctor Mode",
         "Button Game",
         "Launch Codes",
         "Snake",
@@ -3409,6 +3426,9 @@ def show_games_menu():
 
 
 def handle_games_selection(selection):
+    if selection == "Doctor Mode":
+        start_doctor_mode()
+        return
     if selection == "Button Game":
         start_button_game()
         return
