@@ -981,9 +981,20 @@ def run_git_pull():
     repo_dir = os.path.dirname(os.path.abspath(__file__))
     menu_instance.display_message_screen("Git Update", "Running git pull...", delay=1)
     try:
-        subprocess.run(["git", "-C", repo_dir, "pull"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run([
+            "git",
+            "-C",
+            repo_dir,
+            "pull",
+        ], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         menu_instance.display_message_screen("Git Update", "Pull successful", delay=2)
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        stdout = e.stdout.strip() if e.stdout else ""
+        stderr = e.stderr.strip() if e.stderr else ""
+        details = "\n".join(filter(None, [stdout, stderr])).strip()
+        if not details:
+            details = "git pull failed with no output."
+        save_git_pull_error(details)
         menu_instance.display_message_screen("Git Update", "Pull failed", delay=2)
     menu_instance.clear_display()
 
@@ -2841,6 +2852,23 @@ def save_connect_failure(details):
         ]
         next_num = max(existing, default=0) + 1
         path = os.path.join(NOTES_DIR, f"connectfail{next_num}.txt")
+        with open(path, "w") as f:
+            f.write(details)
+    except Exception:
+        pass
+
+
+def save_git_pull_error(details):
+    """Save git pull error details to the notes directory."""
+    pattern = re.compile(r"gitpullerror(\d+)\.txt")
+    try:
+        existing = [
+            int(m.group(1))
+            for m in (pattern.match(f) for f in os.listdir(NOTES_DIR))
+            if m
+        ]
+        next_num = max(existing, default=0) + 1
+        path = os.path.join(NOTES_DIR, f"gitpullerror{next_num}.txt")
         with open(path, "w") as f:
             f.write(details)
     except Exception:
