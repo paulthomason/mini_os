@@ -1,230 +1,76 @@
+import json
+import os
 import time
+import openai
+from datetime import datetime
 from PIL import Image, ImageDraw
+from .trivia import wrap_text
 
 thread_safe_display = None
 fonts = None
 exit_cb = None
 
-state = "start"
+OPENAI_API_KEY = None
+MISSING_KEY_MSG = (
+    "OpenAI API key not found. Please create openai_config.py with your key."
+)
 
-STEPS = {   'abby_file': {   'choices': [   ('Offer help', 'help_abby'),
-                                    ('Back to desk', 'start')],
-                     'text': ['She grudgingly', 'files forms.']},
-    'alert_vet': {   'choices': [('Back to desk', 'start')],
-                     'text': ['Vet appreciates', 'the warning.']},
-    'anderson': {   'choices': [   ('Ask for tasks', 'anderson_tasks'),
-                                   ('Back to desk', 'start'),
-                                   ('Supply orders', 'supply_orders')],
-                    'text': ['Dr. Anderson', 'checks in.']},
-    'anderson_tasks': {   'choices': [   ('Find Nova', 'find_nova'),
-                                         ('Back', 'start'),
-                                         ('Staff meeting', 'staff_meeting')],
-                          'text': ['She asks you to', 'check on Nova.']},
-    'assist_nova': {   'choices': [   ('Back to desk', 'start'),
-                                      ('Discuss training', 'training_chat'),
-                                      ('Check meds', 'check_meds')],
-                       'text': ['Call goes well,', 'Nova relieved.']},
-    'assist_surgery': {   'choices': [('Back to desk', 'start')],
-                          'text': ['Surgery runs', 'smoothly.']},
-    'break_chat': {   'choices': [   ('Plan lunch', 'schedule_lunch'),
-                                     ('Back to desk', 'start')],
-                      'text': ['Anita shares', 'weekend tales.']},
-    'break_room': {   'choices': [   ('Chat coworker', 'break_chat'),
-                                     ('Check fridge', 'check_fridge'),
-                                     ('Back to desk', 'start')],
-                      'text': ['Quick snack in', 'the break room.']},
-    'call_client': {   'choices': [   ('Record note', 'record_note'),
-                                      ('Back', 'start')],
-                       'text': ['You update the', "client's meds."]},
-    'call_vet': {   'choices': [   ('Wait', 'wait_vet'),
-                                   ('Prep room', 'prep_er_room'),
-                                   ('Text update', 'text_update')],
-                    'text': ['Anderson is on', 'the way.']},
-    'calm_clients': {   'choices': [   ('Catch cat', 'catch_cat'),
-                                       ('Back', 'start')],
-                        'text': ['Clients wait', 'patiently.']},
-    'calm_owner': {   'choices': [   ('Back to desk', 'start'),
-                                     ('Take payment', 'take_payment')],
-                      'text': ['Owner agrees', 'to pay later.']},
-    'catch_cat': {   'choices': [('Back to desk', 'start')],
-                     'text': ['Cat secured,', 'crisis over.']},
-    'chaos': {   'choices': [   ('Fix it', 'fix_it'),
-                                ('Back', 'start'),
-                                ('Lost cat', 'lost_cat')],
-                 'text': ['Destiny misplaces', 'paperwork again.']},
-    'check_anesthesia': {   'choices': [   ('Refill', 'refill_iso'),
-                                           ('Alert vet', 'alert_vet'),
-                                           ('Back', 'start')],
-                            'text': ['Isoflurane low', 'on machine.']},
-    'check_fridge': {   'choices': [   ('Toss leftovers', 'toss_leftovers'),
-                                       ('Back', 'break_room')],
-                        'text': ['Fridge crowded', 'with old food.']},
-    'check_meds': {   'choices': [('Back to desk', 'start')],
-                      'text': ['Pills counted', 'and logged.']},
-    'check_weight': {   'choices': [   ('Note record', 'note_weight'),
-                                       ('Return', 'start')],
-                        'text': ['Patient heavier', 'than last visit.']},
-    'collect_deposit': {   'choices': [('Back to desk', 'start')],
-                           'text': ['Deposit secured', 'for visit.']},
-    'confirm_apps': {   'choices': [   ('Mark updated', 'wrap_up'),
-                                       ('Send texts', 'send_texts'),
-                                       (   'Note cancellations',
-                                           'note_cancellation')],
-                        'text': ['Clients confirm or', 'reschedule.']},
-    'doyle': {   'choices': [   ('Back to desk', 'wrap_up'),
-                                ('Walk-in', 'walk_in')],
-                 'text': ['Dr. Doyle thanks', 'you for the info.']},
-    'emergency_call': {   'choices': [   ('Prep room', 'prep_er_room'),
-                                         ('Call vet', 'call_vet'),
-                                         ('Back', 'start')],
-                          'text': ['Hit-by-car dog', 'arriving soon.']},
-    'end': {'choices': [], 'text': ['5pm hits.', 'Time to go home!']},
-    'er_arrives': {   'choices': [   ('Assist vet', 'assist_surgery'),
-                                     ('Grab fluids', 'grab_fluids')],
-                      'text': ['Critical dog', 'arrives now!']},
-    'exam_ready': {   'choices': [   ('Relay to vet', 'relay_vet'),
-                                     ('Get vitals', 'vitals'),
-                                     ('Back', 'start')],
-                      'text': ['Maddie signals', 'a patient ready.']},
-    'find_nova': {   'choices': [('Assist', 'assist_nova'), ('Back', 'start')],
-                     'text': ['Nova needs help', 'calling a client.']},
-    'firm': {   'choices': [   ('Back to desk', 'start'),
-                               ('Answer phone', 'phone_rings'),
-                               ('Ask Abby file', 'abby_file')],
-                'text': ['Abby sighs and', 'backs away.']},
-    'fix_it': {   'choices': [('Back to desk', 'start')],
-                  'text': ['You fix the mess', 'without fuss.']},
-    'flag_urgent': {   'choices': [('Back to desk', 'start')],
-                       'text': ['Urgent flag', 'added to note.']},
-    'front_desk': {   'choices': [   ('Stay firm', 'firm'),
-                                     ('Let her', 'chaos'),
-                                     ('Back', 'start')],
-                      'text': ['Abby steps in,', 'adding confusion.']},
-    'grab_fluids': {   'choices': [('Back to desk', 'start')],
-                       'text': ['Fluids ready', 'for vet.']},
-    'grab_net': {   'choices': [('Return to desk', 'start')],
-                    'text': ['You snag the', 'cat quickly.']},
-    'help_abby': {   'choices': [('Back to desk', 'start')],
-                     'text': ['Together you', 'finish quickly.']},
-    'help_paul': {   'choices': [('Wait for vet', 'wait_vet')],
-                     'text': ['Room prepped', 'efficiently.']},
-    'lab_call_owner': {   'choices': [   ('Back to desk', 'start'),
-                                         (   'Schedule recheck',
-                                             'schedule_recheck')],
-                          'text': ['Owner thanks you', 'for the update.']},
-    'lab_notify_vet': {   'choices': [   ('Back to desk', 'start'),
-                                         ('Update record', 'update_record')],
-                          'text': ['Anderson notes', 'the results.']},
-    'lab_results': {   'choices': [   ('Call owner', 'lab_call_owner'),
-                                      ('Notify vet', 'lab_notify_vet'),
-                                      ('Back', 'start')],
-                       'text': ["Fluffy's labs", 'are completed.']},
-    'log_shortage': {   'choices': [('Back to desk', 'start')],
-                        'text': ['Shortage noted', 'for reorder.']},
-    'lost_cat': {   'choices': [   ('Calm clients', 'calm_clients'),
-                                   ('Grab net', 'grab_net'),
-                                   ('Back', 'start')],
-                    'text': ['A cat escapes', 'into lobby!']},
-    'messages': {   'choices': [   ('Tell Anderson', 'anderson'),
-                                   ('Call client', 'call_client'),
-                                   ('Check techs', 'tech_room')],
-                    'text': ['Clients left', 'several messages.']},
-    'note_cancellation': {   'choices': [('Back', 'schedule')],
-                             'text': ['Canceled spots', 'reopened.']},
-    'note_weight': {   'choices': [('Back to desk', 'start')],
-                       'text': ['Record updated', 'for vet.']},
-    'offer_help': {   'choices': [   ('Return to desk', 'start'),
-                                     ('Check anesthesia', 'check_anesthesia'),
-                                     ('Suture packs', 'suture_packs')],
-                      'text': ['Paul and Pablo', 'grab supplies.']},
-    'open_slot': {   'choices': [   ('Tell Doyle', 'doyle'),
-                                    ('Leave open', 'wrap_up'),
-                                    ('Back', 'schedule')],
-                     'text': ['3pm slot is', 'available today.']},
-    'oxygen_check': {   'choices': [   ('Replace tank', 'replace_tank'),
-                                       ('Back', 'prep_er_room')],
-                        'text': ['Oxygen tank', 'running low.']},
-    'pharmacy_stock': {   'choices': [   ('Log shortage', 'log_shortage'),
-                                         ('Back', 'start')],
-                          'text': ['Shelves show some', 'drugs running low.']},
-    'phone_rings': {   'choices': [   ('Calm them', 'calm_owner'),
-                                      ('Transfer vet', 'transfer_vet'),
-                                      ('Back', 'start')],
-                       'text': ['Caller upset', 'about a bill.']},
-    'prep_er_room': {   'choices': [   ('Help him', 'help_paul'),
-                                       ('Call vet', 'call_vet'),
-                                       ('Check oxygen', 'oxygen_check')],
-                        'text': ['You and Paul', 'ready supplies.']},
-    'record_note': {   'choices': [   ('Wrap up', 'wrap_up'),
-                                      ('Flag urgent', 'flag_urgent')],
-                       'text': ['Note saved for', 'the vets.']},
-    'refill_iso': {   'choices': [('Back to desk', 'start')],
-                      'text': ['Tank replaced', 'successfully.']},
-    'relay_vet': {   'choices': [   ('Back to desk', 'start'),
-                                    ('Take ER call', 'emergency_call')],
-                     'text': ['You alert Dr.', 'Anderson.']},
-    'replace_tank': {   'choices': [('Back', 'prep_er_room')],
-                        'text': ['New tank in', 'place quickly.']},
-    'schedule': {   'choices': [   ('Confirm clients', 'confirm_apps'),
-                                   ('Find open slot', 'open_slot'),
-                                   ('Exam room', 'exam_ready')],
-                    'text': ['You review the', 'appointment list.']},
-    'schedule_lunch': {   'choices': [('Back to desk', 'start')],
-                          'text': ['Lunch planned', 'for Friday.']},
-    'schedule_recheck': {   'choices': [('Back to desk', 'start')],
-                            'text': ['Recheck set for', 'next week.']},
-    'send_texts': {   'choices': [('Back', 'schedule')],
-                      'text': ['Reminder texts', 'sent to all.']},
-    'share_idea': {   'choices': [('Back to desk', 'start')],
-                      'text': ['Team loves your', 'suggestion.']},
-    'staff_meeting': {   'choices': [   ('Take notes', 'take_notes'),
-                                        ('Share idea', 'share_idea'),
-                                        ('Back', 'start')],
-                         'text': ['Quick meeting', 'about tomorrow.']},
-    'start': {   'choices': [   ('Check messages', 'messages'),
-                                ('Look at schedule', 'schedule'),
-                                ('Front desk', 'front_desk')],
-                 'text': ['Gorgina begins', 'her day at desk.']},
-    'supply_orders': {   'choices': [   ('Check pharmacy', 'pharmacy_stock'),
-                                        ('Back', 'start')],
-                         'text': ['She reviews low', 'inventory items.']},
-    'suture_packs': {   'choices': [('Back to desk', 'start')],
-                        'text': ['Suture packs', 'restocked.']},
-    'take_notes': {   'choices': [('Back to desk', 'start')],
-                      'text': ['Notes recorded', 'for the team.']},
-    'take_payment': {   'choices': [('Back to desk', 'start')],
-                        'text': ['Payment taken', 'over phone.']},
-    'tech_room': {   'choices': [   ('Offer help', 'offer_help'),
-                                    ('Back', 'start'),
-                                    ('Lab results', 'lab_results')],
-                     'text': ['Mel and Maddie', 'prep for surgery.']},
-    'text_update': {   'choices': [('Wait', 'wait_vet')],
-                       'text': ['Vet replies', 'almost instantly.']},
-    'toss_leftovers': {   'choices': [('Back to desk', 'start')],
-                          'text': ['Fridge cleaned', 'and organized.']},
-    'training_chat': {   'choices': [   ('Set meeting', 'training_set'),
-                                        ('Back to desk', 'start')],
-                         'text': ['Nova wants more', 'phone tips soon.']},
-    'training_set': {   'choices': [('Back to desk', 'start')],
-                        'text': ['Training set for', 'next Tuesday.']},
-    'transfer_vet': {   'choices': [('Back to desk', 'start')],
-                        'text': ['Vet takes over', 'the call.']},
-    'update_record': {   'choices': [('Back to desk', 'start')],
-                         'text': ['Record updated', 'with new labs.']},
-    'vitals': {   'choices': [   ('Back to desk', 'start'),
-                                 ('Check weight', 'check_weight')],
-                  'text': ['Paul records the', 'vitals with you.']},
-    'wait_vet': {   'choices': [   ('Return to desk', 'start'),
-                                   ('Dog arrives', 'er_arrives')],
-                    'text': ['Patient stable', 'for now.']},
-    'walk_in': {   'choices': [   ('Back to desk', 'start'),
-                                  ('Collect deposit', 'collect_deposit')],
-                   'text': ['A walk-in', 'added to slot.']},
-    'wrap_up': {   'choices': [   ('Clock out', 'end'),
-                                  ('Check desk', 'start'),
-                                  ('Grab snack', 'break_room')],
-                   'text': ["It's nearly 5pm.", 'Anything else?']}}
+messages = []
+conversation = []
+current_options = []
+text_offset = 0
+text_max_offset = 0
+line_height = 0
+LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "notes", "vet_ai_log.txt")
+os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
+def log(msg, *, reset=False):
+    mode = "w" if reset else "a"
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        with open(LOG_PATH, mode) as f:
+            f.write(f"[{ts}] {msg}\n")
+    except Exception:
+        pass
+
+def load_api_key():
+    global OPENAI_API_KEY
+    try:
+        from openai_config import OPENAI_API_KEY as KEY
+        OPENAI_API_KEY = KEY
+    except Exception as e:
+        OPENAI_API_KEY = None
+        log(f"API key load failed: {e}")
+
+def request_chat(message):
+    global messages
+    if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_API_KEY_HERE":
+        openai.api_key = OPENAI_API_KEY
+        messages.append({"role": "user", "content": message})
+        try:
+            resp = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You narrate an amusing text adventure set in a busy veterinary clinic. "
+                            "After each short scene respond ONLY with JSON containing keys 'reply' and 'options'. "
+                            "Provide exactly three numbered choices in 'options'."
+                        ),
+                    }
+                ] + messages,
+                temperature=0.7,
+                response_format={"type": "json_object"},
+            )
+            data = json.loads(resp.choices[0].message["content"].strip())
+            if isinstance(data, dict) and "reply" in data and isinstance(data.get("options"), list):
+                messages.append({"role": "assistant", "content": data["reply"]})
+                return data
+        except Exception as e:
+            messages.pop()
+            log(f"OpenAI request failed: {e}")
+    return {"reply": MISSING_KEY_MSG, "options": []}
 
 def init(display_func, fonts_tuple, quit_callback):
     global thread_safe_display, fonts, exit_cb
@@ -232,45 +78,80 @@ def init(display_func, fonts_tuple, quit_callback):
     fonts = fonts_tuple
     exit_cb = quit_callback
 
-
 def start():
-    global state
-    state = "start"
+    global conversation, current_options, text_offset, messages
+    log("Vet Adventure started", reset=True)
+    load_api_key()
+    messages = []
+    data = request_chat("Start the adventure.")
+    conversation = ["AI: " + data.get("reply", "")]
+    current_options = data.get("options", [])
+    text_offset = 0
     draw()
 
+def _select_option(num):
+    global conversation, current_options, text_offset
+    if not current_options:
+        exit_cb()
+        return
+    if num < 1 or num > len(current_options):
+        return
+    conversation = [f"You: {num}"]
+    data = request_chat(str(num))
+    conversation.append("AI: " + data.get("reply", ""))
+    current_options = data.get("options", [])
+    text_offset = 0
+    draw()
 
 def handle_input(pin):
-    global state
-    if state == "end":
-        exit_cb()
+    if pin == "JOY_UP":
+        scroll_text(-1)
         return
-    step = STEPS[state]
-    if pin == "KEY1" and len(step["choices"]) >= 1:
-        state = step["choices"][0][1]
-    elif pin == "KEY2" and len(step["choices"]) >= 2:
-        state = step["choices"][1][1]
-    elif pin == "KEY3" and len(step["choices"]) >= 3:
-        state = step["choices"][2][1]
-    elif pin == "JOY_PRESS":
-        exit_cb()
+    if pin == "JOY_DOWN":
+        scroll_text(1)
         return
-    draw()
+    if pin == "KEY1":
+        _select_option(1)
+        return
+    if pin == "KEY2":
+        _select_option(2)
+        return
+    if pin == "KEY3":
+        _select_option(3)
+        return
+    if pin == "JOY_PRESS":
+        exit_cb()
 
 
 def draw():
-    step = STEPS[state]
+    global text_max_offset, line_height, text_offset
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
-    d.text((5, 5), step["text"][0], font=fonts[1], fill=(255, 255, 255))
-    d.text((5, 25), step["text"][1], font=fonts[1], fill=(255, 255, 255))
-    if step["choices"]:
-        y = 70
-        for idx, (label, _) in enumerate(step["choices"], 1):
-            d.text((5, y), f"{idx}={label}", font=fonts[0], fill=(0, 255, 255))
-            y += 12
-    else:
-        d.text((25, 70), "(Press)", font=fonts[0], fill=(0, 255, 255))
+    y = 5 - text_offset
+    lines = []
+    for line in conversation:
+        lines.extend(wrap_text(line, fonts[1], 118, d))
+    for i, opt in enumerate(current_options, 1):
+        lines.extend(wrap_text(f"{i}) {opt}", fonts[1], 118, d))
+    line_height = fonts[1].getbbox("A")[3] + 2
+    total_height = len(lines) * line_height
+    text_max_offset = max(0, total_height - (128 - 10))
+    text_offset = min(text_offset, text_max_offset)
+    for line in lines:
+        if 5 <= y < 128:
+            d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
+        y += line_height
+    hint = "Press 1-3 to choose" if current_options else "Press any key to exit"
+    d.text((5, 118), hint, font=fonts[0], fill=(0, 255, 255))
     thread_safe_display(img)
-    if state == "end":
-        time.sleep(2)
-        exit_cb()
+
+def scroll_text(direction):
+    global text_offset
+    if text_max_offset <= 0:
+        return
+    text_offset += direction * line_height
+    if text_offset < 0:
+        text_offset = 0
+    if text_offset > text_max_offset:
+        text_offset = text_max_offset
+    draw()
