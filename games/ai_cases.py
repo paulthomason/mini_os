@@ -66,14 +66,16 @@ def request_chat(message):
                         "role": "system",
                         "content": (
                             "You are a friendly assistant. "
-                            "After each user message respond with JSON: "
-                            "{'reply': '<assistant reply>', 'options': ['choice1','choice2','choice3']} "
-                            "where options are short user responses."
+                            "After each user message respond only with valid JSON "
+                            "containing keys 'reply' and 'options'. The reply should "
+                            "be your short message to the user. The options array should "
+                            "contain up to three short user responses."
                         ),
                     }
                 ]
                 + messages,
                 temperature=0.7,
+                response_format={"type": "json_object"},
             )
             txt = resp.choices[0].message["content"].strip()
             data = json.loads(txt)
