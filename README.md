@@ -65,7 +65,7 @@ The service definition will start the program on boot and restart it automatical
 
 The menu can fetch headlines from the New York Times API. Copy `nyt_config.py.example` to `nyt_config.py` and add your API key. The file is in `.gitignore` so your key stays local.
 
-An additional `openai_config.py.example` provides a placeholder for your OpenAI API key. Copy it to `openai_config.py` and enter your key to enable the AI‑powered chat game. The conversation presents three suggested replies that you choose using the hardware buttons.
+An additional `openai_config.py.example` provides a placeholder for your OpenAI API key. Copy it to `openai_config.py` and enter your key to enable the AI‑powered **AI Cases** game. The AI narrates a day in veterinary internal medicine and offers three numbered choices that you select using the hardware buttons.
 
 ## Web Interface
 
