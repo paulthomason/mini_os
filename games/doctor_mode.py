@@ -5,6 +5,8 @@ from .trivia import wrap_text
 thread_safe_display = None
 fonts = None
 exit_cb = None
+score = 0
+cases_completed = 0
 
 # Templates for interactive training cases.  Each function accepts a pet
 # dictionary and returns a scenario dict used to build dialogue steps.
@@ -98,12 +100,97 @@ def scenario_missed_med(pet):
     }
 
 
+def scenario_diabetes(pet):
+    return {
+        "intro": [
+            f"{pet['name']} is drinking and urinating more than usual.",
+            "Diabetes mellitus is suspected.",
+        ],
+        "question": "What is the cornerstone of diabetes treatment in dogs?",
+        "options": ["Oral meds", "Insulin injections", "High fiber diet"],
+        "answer": 1,
+        "explanation": (
+            "Daily insulin injections are required for most diabetic dogs."
+        ),
+        "closing": "You discuss insulin administration with the owner.",
+    }
+
+
+def scenario_obesity(pet):
+    return {
+        "intro": [
+            f"{pet['name']} has gained a lot of weight over the last year.",
+            "Owner feeds table scraps frequently.",
+        ],
+        "question": "What is an appropriate first step for weight loss?",
+        "options": ["Switch to low-calorie food", "Increase treats", "Nothing"],
+        "answer": 0,
+        "explanation": (
+            "Diet change and controlled portions help start safe weight reduction."
+        ),
+        "closing": "Owner agrees to transition to a weight management diet.",
+    }
+
+
+def scenario_ear_mites(pet):
+    return {
+        "intro": [
+            f"{pet['name']} is scratching the ears constantly.",
+            "Dark debris is noted in both ears.",
+        ],
+        "question": "Which parasite commonly causes this sign?",
+        "options": ["Ear mites", "Fleas", "Ticks"],
+        "answer": 0,
+        "explanation": (
+            "Otodectes cynotis mites often cause intense ear irritation in pets."
+        ),
+        "closing": "You demonstrate how to apply topical mite treatment.",
+    }
+
+
+def scenario_lyme(pet):
+    return {
+        "intro": [
+            f"{pet['name']} recently had a tick attached.",
+            "Owner worries about Lyme disease.",
+        ],
+        "question": "What prevention helps reduce Lyme risk?",
+        "options": ["Heartworm pills", "Tick control products", "Vaccinating cats"],
+        "answer": 1,
+        "explanation": (
+            "Regular use of tick preventatives greatly lowers Lyme exposure."
+        ),
+        "closing": "You recommend year-round tick protection.",
+    }
+
+
+def scenario_skin_allergy(pet):
+    return {
+        "intro": [
+            f"{pet['name']} licks the paws and has red skin.",
+            "Allergies are suspected.",
+        ],
+        "question": "Which therapy often provides relief?",
+        "options": ["Antihistamines", "Chocolate", "Human shampoo"],
+        "answer": 0,
+        "explanation": (
+            "Antihistamines or other anti-itch medications can help allergic pets."
+        ),
+        "closing": "Owner will try prescribed antihistamines first.",
+    }
+
+
 SCENARIOS = [
     scenario_vaccine,
     scenario_pain_med,
     scenario_hyperthyroid,
     scenario_heartworm,
     scenario_missed_med,
+    scenario_diabetes,
+    scenario_obesity,
+    scenario_ear_mites,
+    scenario_lyme,
+    scenario_skin_allergy,
 ]
 
 
@@ -123,7 +210,10 @@ def init(display_func, fonts_tuple, quit_callback):
 
 
 def start():
-    """Initialize the pet database and launch the first training case."""
+    """Initialize the pet database, reset scores, and launch the first case."""
+    global score, cases_completed
+    score = 0
+    cases_completed = 0
     generate_pet_db()
     next_case()
 
@@ -196,7 +286,7 @@ def next_case():
 
 
 def handle_input(pin):
-    global step_idx, text_offset
+    global step_idx, text_offset, score, cases_completed
     if pin == "JOY_PRESS":
         exit_cb()
         return
@@ -218,6 +308,7 @@ def handle_input(pin):
         else:
             return
         if choice == step["answer"]:
+            score += 1
             current_steps[2]["text"] = ["Correct!"]
         else:
             current_steps[2]["text"] = ["Hold on...", step["explanation"]]
@@ -241,6 +332,11 @@ def handle_input(pin):
     if nxt == -1:
         next_case()
     else:
+        # When moving from the feedback step to the closing step attach score
+        if step_idx == 2 and nxt == 3:
+            cases_completed += 1
+            closing = current_steps[3]["text"][0]
+            current_steps[3]["text"] = [closing, f"Score: {score}/{cases_completed}"]
         step_idx = nxt
         text_offset = 0
         draw()
