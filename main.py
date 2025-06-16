@@ -364,6 +364,18 @@ web_keyboard_state = 1
 web_row = 1
 web_col = 0
 
+# --- RDP Client ---
+rdp_host = ""
+rdp_user = ""
+rdp_pass = ""
+rdp_stage = 0  # 0=host,1=user,2=pass,3=connected
+rdp_row = 1
+rdp_col = 0
+rdp_keyboard_state = 1
+rdp_offset_x = 0
+rdp_offset_y = 0
+rdp_screen = None
+
 # Configuration file for persisting settings like color scheme
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
 
@@ -922,6 +934,10 @@ def button_event_handler(channel):
             handle_irc_chat_input(pin_name)
         elif menu_instance.current_screen == "web_browser":
             handle_web_browser_input(pin_name)
+        elif menu_instance.current_screen == "rdp_input":
+            handle_rdp_input(pin_name)
+        elif menu_instance.current_screen == "rdp_session":
+            handle_rdp_session_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
         hold_time = current_time - press_start_time.get(pin_name, current_time)
@@ -2252,6 +2268,159 @@ def handle_web_browser_input(pin_name):
             show_utilities_menu()
             return
         draw_web_browser_screen()
+
+# --- RDP Utility ---
+
+def draw_rdp_input_screen():
+    """Show on-screen keyboard for RDP connection details."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    fields = ["Host", "User", "Password"]
+    values = [rdp_host, rdp_user, "*" * len(rdp_pass)]
+    draw.text((5, 2), f"RDP {fields[rdp_stage]}", font=font_large, fill=(255,255,0))
+    line_h = draw.textbbox((0,0), "A", font=font_medium)[3] + 2
+    max_width = DISPLAY_WIDTH - 10
+    lines = wrap_text(values[rdp_stage], font_medium, max_width, draw)
+    kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
+    tips_h = 10
+    start = max(0, len(lines) - (kb_y - 10)//line_h)
+    y = 25
+    for line in lines[start:]:
+        draw.text((5, y), line, font=font_medium, fill=(255,255,255))
+        y += line_h
+
+    row_h = (DISPLAY_HEIGHT - kb_y - tips_h)//len(KEY_LAYOUT)
+    key_w = DISPLAY_WIDTH // 10
+    for r,row in enumerate(KEY_LAYOUT):
+        if r == len(KEY_LAYOUT)-1 and len(row)==1:
+            ox = 5
+            kw = DISPLAY_WIDTH - ox*2
+        else:
+            ox = (DISPLAY_WIDTH - len(row)*key_w)//2
+            kw = key_w
+        for c,ch in enumerate(row):
+            x = ox + c*kw
+            y = kb_y + r*row_h
+            rect=(x+1,y+1,x+kw-2,y+row_h-2)
+            if r==rdp_row and c==rdp_col:
+                draw.rectangle(rect, fill=(0,255,0))
+                text_color=(0,0,0)
+            else:
+                draw.rectangle(rect, outline=(255,255,255))
+                text_color=(255,255,255)
+            bbox=draw.textbbox((0,0),ch,font=font_small)
+            tx=x+(kw-(bbox[2]-bbox[0]))//2
+            ty=y+(row_h-(bbox[3]-bbox[1]))//2
+            draw.text((tx,ty),ch,font=font_small,fill=text_color)
+
+    tips="1=Shift 2=Del 3=Next"
+    draw.text((5, DISPLAY_HEIGHT - tips_h + 2), tips, font=font_small, fill=(0,255,255))
+    thread_safe_display(img)
+
+
+def start_rdp_setup():
+    """Begin gathering RDP connection details."""
+    global rdp_host, rdp_user, rdp_pass, rdp_stage, rdp_row, rdp_col, rdp_keyboard_state, KEY_LAYOUT
+    stop_scrolling()
+    rdp_host = ""
+    rdp_user = ""
+    rdp_pass = ""
+    rdp_stage = 0
+    rdp_keyboard_state = 1
+    KEY_LAYOUT = KEY_LAYOUTS[rdp_keyboard_state]
+    rdp_row = 1
+    rdp_col = 0
+    menu_instance.current_screen = "rdp_input"
+    draw_rdp_input_screen()
+
+
+def handle_rdp_input(pin_name):
+    """Handle joystick input during RDP setup."""
+    global rdp_row, rdp_col, rdp_host, rdp_user, rdp_pass, rdp_stage, rdp_keyboard_state, KEY_LAYOUT
+    target = [rdp_host, rdp_user, rdp_pass]
+    if pin_name == "JOY_LEFT" and rdp_col > 0:
+        rdp_col -= 1
+    elif pin_name == "JOY_RIGHT" and rdp_col < len(KEY_LAYOUT[rdp_row])-1:
+        rdp_col += 1
+    elif pin_name == "JOY_UP" and rdp_row > 0:
+        rdp_row -= 1
+        rdp_col = min(rdp_col, len(KEY_LAYOUT[rdp_row])-1)
+    elif pin_name == "JOY_DOWN" and rdp_row < len(KEY_LAYOUT)-1:
+        rdp_row += 1
+        rdp_col = min(rdp_col, len(KEY_LAYOUT[rdp_row])-1)
+    elif pin_name == "JOY_PRESS":
+        ch = KEY_LAYOUT[rdp_row][rdp_col]
+        if rdp_stage==2:
+            target[rdp_stage] += ch
+        else:
+            target[rdp_stage] += ch
+    elif pin_name == "KEY1":
+        rdp_keyboard_state = (rdp_keyboard_state + 1) % len(KEY_LAYOUTS)
+        KEY_LAYOUT = KEY_LAYOUTS[rdp_keyboard_state]
+        rdp_row = min(rdp_row, len(KEY_LAYOUT)-1)
+        rdp_col = min(rdp_col, len(KEY_LAYOUT[rdp_row])-1)
+    elif pin_name == "KEY2":
+        target[rdp_stage] = target[rdp_stage][:-1]
+    elif pin_name == "KEY3":
+        if rdp_stage < 2:
+            rdp_stage += 1
+            rdp_row = 1
+            rdp_col = 0
+        else:
+            rdp_host, rdp_user, rdp_pass = target
+            connect_rdp()
+            return
+    if rdp_stage==0:
+        rdp_host = target[0]
+    elif rdp_stage==1:
+        rdp_user = target[1]
+    else:
+        rdp_pass = target[2]
+    draw_rdp_input_screen()
+
+
+def connect_rdp():
+    """Attempt to start RDP session (placeholder)."""
+    global rdp_screen, rdp_offset_x, rdp_offset_y, rdp_stage
+    rdp_stage = 3
+    rdp_offset_x = 0
+    rdp_offset_y = 0
+    # Create placeholder screen larger than display
+    img = Image.new("RGB", (DISPLAY_WIDTH*4, DISPLAY_HEIGHT*3), color="gray")
+    d = ImageDraw.Draw(img)
+    d.text((10,10), f"RDP {rdp_host}", font=font_large, fill=(255,255,0))
+    d.text((10,40), "(placeholder)", font=font_medium, fill=(255,255,255))
+    rdp_screen = img
+    menu_instance.current_screen = "rdp_session"
+    draw_rdp_session_screen()
+
+
+def draw_rdp_session_screen():
+    """Display a cropped region of the RDP screen."""
+    if rdp_screen is None:
+        return
+    box=(rdp_offset_x, rdp_offset_y, rdp_offset_x+DISPLAY_WIDTH, rdp_offset_y+DISPLAY_HEIGHT)
+    cropped = rdp_screen.crop(box)
+    thread_safe_display(cropped)
+
+
+def handle_rdp_session_input(pin_name):
+    """Pan around the RDP screen."""
+    global rdp_offset_x, rdp_offset_y
+    max_x = max(0, rdp_screen.width - DISPLAY_WIDTH)
+    max_y = max(0, rdp_screen.height - DISPLAY_HEIGHT)
+    if pin_name == "JOY_LEFT":
+        rdp_offset_x = max(0, rdp_offset_x - 10)
+    elif pin_name == "JOY_RIGHT":
+        rdp_offset_x = min(max_x, rdp_offset_x + 10)
+    elif pin_name == "JOY_UP":
+        rdp_offset_y = max(0, rdp_offset_y - 10)
+    elif pin_name == "JOY_DOWN":
+        rdp_offset_y = min(max_y, rdp_offset_y + 10)
+    elif pin_name == "KEY3" or pin_name == "JOY_PRESS":
+        show_utilities_menu()
+        return
+    draw_rdp_session_screen()
 
 # --- Reaction Game ---
 
@@ -3754,6 +3923,7 @@ def show_utilities_menu():
         "Show Info",
         "World Wide Web",
         "Web Server",
+        "RDP",
         "Shell",
         "Console",
         "Back",
@@ -3777,6 +3947,8 @@ def handle_utilities_selection(selection):
         start_web_browser()
     elif selection == "Web Server":
         start_web_server()
+    elif selection == "RDP":
+        start_rdp_setup()
     elif selection == "Shell":
         start_shell()
     elif selection == "Console":
