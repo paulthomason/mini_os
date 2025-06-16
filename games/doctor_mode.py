@@ -110,6 +110,9 @@ SCENARIOS = [
 pet_db = []
 current_steps = []
 step_idx = 0
+text_offset = 0
+text_max_offset = 0
+line_height = 0
 
 
 def init(display_func, fonts_tuple, quit_callback):
@@ -169,7 +172,7 @@ def generate_pet_db():
 
 def next_case():
     """Select a random training scenario and build dialogue steps."""
-    global current_steps, step_idx
+    global current_steps, step_idx, text_offset
     pet = random.choice(pet_db)
     template = random.choice(SCENARIOS)
     case = template(pet)
@@ -186,15 +189,22 @@ def next_case():
         {"text": [case.get("closing", "Case complete.")], "choices": ["Continue"], "next": [-1]},
     ]
     step_idx = 0
+    text_offset = 0
     draw()
 
 
 
 
 def handle_input(pin):
-    global step_idx
+    global step_idx, text_offset
     if pin == "JOY_PRESS":
         exit_cb()
+        return
+    if pin == "JOY_UP":
+        scroll_text(-1)
+        return
+    elif pin == "JOY_DOWN":
+        scroll_text(1)
         return
     step = current_steps[step_idx]
     # If this step contains a quiz question, evaluate the response
@@ -232,21 +242,28 @@ def handle_input(pin):
         next_case()
     else:
         step_idx = nxt
+        text_offset = 0
         draw()
 
 
 def draw():
+    global text_max_offset, line_height, text_offset
     step = current_steps[step_idx]
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
-    y = 5
+    y = 5 - text_offset
     lines = []
     for line in step["text"]:
         lines.extend(wrap_text(line, fonts[1], 118, d))
-    line_h = fonts[1].getbbox("A")[3] + 2
+    line_height = fonts[1].getbbox("A")[3] + 2
+    total_height = len(lines) * line_height
+    available = 70 - 5
+    text_max_offset = max(0, total_height - available)
+    text_offset = min(text_offset, text_max_offset)
     for line in lines:
-        d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
-        y += line_h
+        if 5 <= y < 70:
+            d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
+        y += line_height
     if step["choices"]:
         y = 70
         opt_h = fonts[0].getbbox("A")[3] + 2
@@ -256,4 +273,16 @@ def draw():
     else:
         d.text((25, 70), "(Press)", font=fonts[0], fill=(0, 255, 255))
     thread_safe_display(img)
+
+
+def scroll_text(direction):
+    global text_offset
+    if text_max_offset <= 0:
+        return
+    text_offset += direction * line_height
+    if text_offset < 0:
+        text_offset = 0
+    if text_offset > text_max_offset:
+        text_offset = text_max_offset
+    draw()
     
