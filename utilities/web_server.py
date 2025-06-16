@@ -67,6 +67,17 @@ def load_nyt_api_key():
     except Exception:
         NYT_API_KEY = "YOUR_API_KEY_HERE"
 
+def save_nyt_api_key(key: str):
+    """Write the NYT API key to nyt_config.py."""
+    global NYT_API_KEY
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "nyt_config.py")
+    try:
+        with open(config_path, "w") as f:
+            f.write(f'NYT_API_KEY = "{key}"\n')
+        NYT_API_KEY = key
+    except Exception:
+        pass
+
 
 @app.route("/")
 def index():
@@ -79,6 +90,7 @@ def index():
         "<li><a href='/shell'>Shell</a></li>"
         "<li><a href='/weather'>Weather</a></li>"
         "<li><a href='/top-stories'>Top Stories</a></li>"
+        "<li><a href='/api-keys'>API Keys</a></li>"
         "<li><a href='/mini-games'>Mini Games</a></li>"
         "</ul>"
     )
@@ -150,6 +162,27 @@ def settings():
     html.append("<button type='submit'>Save</button></form>")
     html.append(
         "<form method='post' action='/toggle-wifi'><button type='submit'>Toggle Wi-Fi</button></form>"
+    )
+    html.append("<p><a href='/'>Back</a></p>")
+    return "\n".join(html)
+
+
+@app.route("/api-keys", methods=["GET", "POST"])
+def api_keys():
+    """View and update API keys used by Mini OS."""
+    load_nyt_api_key()
+    if request.method == "POST":
+        key = request.form.get("nyt_key", "").strip()
+        if key:
+            save_nyt_api_key(key)
+        return redirect("/api-keys")
+
+    current = NYT_API_KEY or ""
+    html = ["<h1>API Keys</h1>"]
+    html.append(
+        "<form method='post'>"
+        f"NYT API Key: <input name='nyt_key' value='{current}'><br>"
+        "<button type='submit'>Save</button></form>"
     )
     html.append("<p><a href='/'>Back</a></p>")
     return "\n".join(html)
