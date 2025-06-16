@@ -32,7 +32,42 @@ MISSING_KEY_MSG = (
 )
 messages = []
 conversation = []
-current_options = []
+typed_text = ""
+kb_row = 1
+kb_col = 0
+keyboard_state = 1  # start with lowercase
+
+KEYBOARD_UPPER = [
+    list("QWERTYUIOP"),
+    list("ASDFGHJKL"),
+    list("ZXCVBNM"),
+    [" "]
+]
+
+KEYBOARD_LOWER = [
+    list("qwertyuiop"),
+    list("asdfghjkl"),
+    list("zxcvbnm"),
+    [" "]
+]
+
+KEYBOARD_PUNCT = [
+    list("!@#$%^&*()"),
+    list("-_=+[]{}"),
+    list(";:'\",.<>/?"),
+    [" "]
+]
+
+KEYBOARD_NUM = [
+    list("1234567890"),
+    list("-/:;()$&@\""),
+    list(".,?!'[]{}#"),
+    [" "]
+]
+
+KEY_LAYOUTS = [KEYBOARD_LOWER, KEYBOARD_UPPER, KEYBOARD_PUNCT, KEYBOARD_NUM]
+KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
+
 text_offset = 0
 text_max_offset = 0
 line_height = 0
@@ -104,71 +139,124 @@ def init(display_func, fonts_tuple, quit_callback):
 
 
 def start():
-    global conversation, current_options, text_offset, messages
+    global conversation, typed_text, kb_row, kb_col, keyboard_state, KEY_LAYOUT, text_offset, messages
     log("AI Cases game started", reset=True)
     load_api_key()
     messages = []
     data = request_chat("Start the conversation.")
     conversation = ["AI: " + data["reply"]]
-    current_options = list(data.get("options", []))
+    typed_text = ""
+    kb_row = 1
+    kb_col = 0
+    keyboard_state = 1
+    KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
     text_offset = 0
     draw()
 
 
 def handle_input(pin):
-    global conversation, current_options, text_offset
+    global conversation, typed_text, kb_row, kb_col, keyboard_state, KEY_LAYOUT, text_offset
     if pin == "JOY_PRESS":
-        log("JOY_PRESS detected - exiting game")
-        exit_cb()
+        ch = KEY_LAYOUT[kb_row][kb_col]
+        typed_text += ch
+        draw()
         return
     if pin == "JOY_UP":
-        log("JOY_UP pressed - scroll up")
-        scroll_text(-1)
+        if kb_row > 0:
+            kb_row -= 1
+        else:
+            scroll_text(-1)
+        draw()
         return
     if pin == "JOY_DOWN":
-        log("JOY_DOWN pressed - scroll down")
-        scroll_text(1)
-        return
-    if pin in ("KEY1", "KEY2", "KEY3"):
-        idx = {"KEY1": 0, "KEY2": 1, "KEY3": 2}[pin]
-        if idx >= len(current_options):
-            log(f"Button {pin} pressed but no option available")
-            return
-        user_msg = current_options[idx]
-        log(f"User selected option: {user_msg}")
-        conversation.append("You: " + user_msg)
-        data = request_chat(user_msg)
-        conversation.append("AI: " + data["reply"])
-        log(f"AI replied: {data['reply']}")
-        current_options = list(data.get("options", []))
-        # keep only recent 20 lines
-        if len(conversation) > 20:
-            conversation = conversation[-20:]
-        text_offset = 0
+        if kb_row < len(KEY_LAYOUT) - 1:
+            kb_row += 1
+        else:
+            scroll_text(1)
         draw()
+        return
+    if pin == "JOY_LEFT" and kb_col > 0:
+        kb_col -= 1
+        draw()
+        return
+    if pin == "JOY_RIGHT" and kb_col < len(KEY_LAYOUT[kb_row]) - 1:
+        kb_col += 1
+        draw()
+        return
+    if pin == "KEY1":
+        keyboard_state = (keyboard_state + 1) % len(KEY_LAYOUTS)
+        KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
+        kb_row = min(kb_row, len(KEY_LAYOUT) - 1)
+        kb_col = min(kb_col, len(KEY_LAYOUT[kb_row]) - 1)
+        draw()
+        return
+    if pin == "KEY2":
+        typed_text = typed_text[:-1]
+        draw()
+        return
+    if pin == "KEY3":
+        if typed_text:
+            conversation.append("You: " + typed_text)
+            data = request_chat(typed_text)
+            conversation.append("AI: " + data["reply"])
+            if len(conversation) > 20:
+                conversation = conversation[-20:]
+            typed_text = ""
+            text_offset = 0
+            draw()
+        else:
+            exit_cb()
+        return
 
 
 def draw():
     global text_max_offset, line_height, text_offset
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
+
+    kb_y = 70
     y = 5 - text_offset
     lines = []
     for line in conversation:
         lines.extend(wrap_text(line, fonts[1], 118, d))
+    lines.extend(wrap_text("You: " + typed_text, fonts[1], 118, d))
+
     line_height = fonts[1].getbbox("A")[3] + 2
     total_height = len(lines) * line_height
-    text_max_offset = max(0, total_height - 65)
+    text_max_offset = max(0, total_height - (kb_y - 5))
     text_offset = min(text_offset, text_max_offset)
     for line in lines:
-        if 5 <= y < 70:
+        if 5 <= y < kb_y:
             d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
         y += line_height
-    opt_y = 70
-    opt_h = fonts[0].getbbox("A")[3] + 2
-    for i, opt in enumerate(current_options, 1):
-        d.text((5, opt_y), f"{i}={opt}", font=fonts[0], fill=(0, 255, 255))
-        opt_y += opt_h
+
+    row_h = (128 - kb_y - 10) // len(KEY_LAYOUT)
+    key_w = 128 // 10
+    for r, row in enumerate(KEY_LAYOUT):
+        if r == len(KEY_LAYOUT) - 1 and len(row) == 1:
+            ox = 5
+            kw = 128 - ox * 2
+        else:
+            ox = (128 - len(row) * key_w) // 2
+            kw = key_w
+        for c, ch in enumerate(row):
+            x = ox + c * kw
+            yk = kb_y + r * row_h
+            rect = (x + 1, yk + 1, x + kw - 2, yk + row_h - 2)
+            if r == kb_row and c == kb_col:
+                d.rectangle(rect, fill=(0, 255, 0))
+                text_color = (0, 0, 0)
+            else:
+                d.rectangle(rect, outline=(255, 255, 255))
+                text_color = (255, 255, 255)
+            bbox = d.textbbox((0, 0), ch, font=fonts[0])
+            tx = x + (kw - (bbox[2] - bbox[0])) // 2
+            ty = yk + (row_h - (bbox[3] - bbox[1])) // 2
+            d.text((tx, ty), ch, font=fonts[0], fill=text_color)
+
+    tips = "1=Shift 2=Del 3=Send"
+    d.text((5, 128 - 10 + 2), tips, font=fonts[0], fill=(0, 255, 255))
+
     thread_safe_display(img)
 
 
