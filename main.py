@@ -138,7 +138,7 @@ font_large = None
 font_tiny = None
 
 current_font_name = "DejaVu Sans"
-current_text_size = "Medium"
+current_text_size = "Small"
 TINY_FONT_SIZE = 6
 
 

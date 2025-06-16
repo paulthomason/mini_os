@@ -72,8 +72,9 @@ def request_chat(message):
                             "complex cases. After each scenario respond only with valid JSON "
                             "containing keys 'reply' and 'options'. The 'reply' is a short "
                             "description of the next situation. The 'options' array must "
-                            "contain exactly three brief descriptions of actions the user can "
-                            "take, each prefixed with its number (1, 2, 3). Use the user's "
+                            "contain exactly three concise numbered actions the user can take. "
+                            "Avoid yes/no or trivial choices like deciding whether to perform a "
+                            "physical exam—the exam has already been completed. Use the user's "
                             "previous choice to generate the following scenario."
                         ),
                     }
@@ -126,8 +127,6 @@ def start():
     current_options = data.get("options", [])
     text_offset = 0
     draw()
-    text_offset = text_max_offset
-    draw()
 
 
 def _select_option(num: int):
@@ -144,9 +143,6 @@ def _select_option(num: int):
     conversation.append("AI: " + data.get("reply", ""))
     current_options = data.get("options", [])
     text_offset = 0
-    draw()
-    # After drawing once update offset to show the latest response
-    text_offset = text_max_offset
     draw()
 
 
