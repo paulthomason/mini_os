@@ -353,6 +353,7 @@ gallery_index = 0
 # --- Notes Directory ---
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "notes")
 os.makedirs(NOTES_DIR, exist_ok=True)
+ATTEMPT_LOG_PATH = os.path.join(NOTES_DIR, "attempt.txt")
 
 # --- Web Browser ---
 web_url = "https://example.com"
@@ -2786,8 +2787,18 @@ def handle_doctor_mode_input(pin_name):
     doctor_mode.handle_input(pin_name)
 
 # --- AI Cases Game ---
+def log_ai_cases_attempt():
+    """Record an attempt to open the AI Cases game."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        with open(ATTEMPT_LOG_PATH, "a") as f:
+            f.write(f"attempt {timestamp}\n")
+    except Exception:
+        pass
+
 
 def start_ai_cases():
+    log_ai_cases_attempt()
     stop_scrolling()
     ai_cases.init(thread_safe_display, (font_small, font_medium, font_large), show_main_menu)
     menu_instance.current_screen = "ai_cases"
