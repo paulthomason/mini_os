@@ -69,12 +69,14 @@ def request_chat(message):
                         "role": "system",
                         "content": (
                             "You are narrating a typical day as a veterinary internal "
-                            "medicine specialist. After each scenario respond only with "
-                            "valid JSON containing keys 'reply' and 'options'. The 'reply' "
-                            "is a short description of the next situation. The 'options' "
-                            "array must contain exactly three brief descriptions of actions "
-                            "the user can take, each prefixed with its number (1, 2, 3). "
-                            "Use the user's previous choice to generate the following scenario."
+                            "medicine specialist managing complex cases. After each scenario "
+                            "respond only with valid JSON containing keys 'reply' and 'options'. "
+                            "The 'reply' is a short description of the next situation that focuses "
+                            "on clinical reasoning around difficult internal medicine problems. "
+                            "The 'options' array must contain exactly three brief descriptions of "
+                            "actions the user can take, each prefixed with its number (1, 2, 3). "
+                            "Use the user's previous choice to generate the following scenario and "
+                            "keep the narrative centered on complex veterinary internal medicine."
                         ),
                     }
                 ]
@@ -123,7 +125,7 @@ def start():
     data = request_chat("Start the conversation.")
     conversation = ["AI: " + data.get("reply", "")] 
     current_options = data.get("options", [])
-    text_offset = 0
+    text_offset = 9999  # jump to newest text
     draw()
 
 
@@ -141,7 +143,7 @@ def _select_option(num: int):
     current_options = data.get("options", [])
     if len(conversation) > 20:
         conversation = conversation[-20:]
-    text_offset = 0
+    text_offset = 9999  # show latest reply
     draw()
 
 
