@@ -70,11 +70,11 @@ def request_chat(message):
                         "content": (
                             "You are narrating a typical day as a veterinary internal "
                             "medicine specialist. After each scenario respond only with "
-                            "valid JSON containing keys 'reply' and 'options'. The reply "
-                            "is a short description of the next situation. The options "
-                            "array must contain exactly three short numbered choices (1, 2, 3) "
-                            "that the user can select to decide what to do next. Use the user's "
-                            "previous choice to generate the following scenario."
+                            "valid JSON containing keys 'reply' and 'options'. The 'reply' "
+                            "is a short description of the next situation. The 'options' "
+                            "array must contain exactly three brief descriptions of actions "
+                            "the user can take, each prefixed with its number (1, 2, 3). "
+                            "Use the user's previous choice to generate the following scenario."
                         ),
                     }
                 ]
