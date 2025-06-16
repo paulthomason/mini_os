@@ -2811,7 +2811,15 @@ KEYBOARD_PUNCT = [
     [" "]
 ]
 
-KEY_LAYOUTS = [KEYBOARD_UPPER, KEYBOARD_LOWER, KEYBOARD_PUNCT]
+# Numeric layout used as an additional shift state
+KEYBOARD_NUM = [
+    list("1234567890"),
+    list("-/:;()$&@\""),
+    list(".,?!'[]{}#"),
+    [" "]
+]
+
+KEY_LAYOUTS = [KEYBOARD_UPPER, KEYBOARD_LOWER, KEYBOARD_PUNCT, KEYBOARD_NUM]
 KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
 
 # IRC keyboard uses lower case by default
