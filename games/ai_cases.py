@@ -101,11 +101,13 @@ def request_chat(message):
                     {
                         "role": "system",
                         "content": (
-                            "You are a friendly assistant. "
-                            "After each user message respond only with valid JSON "
-                            "containing keys 'reply' and 'options'. The reply should "
-                            "be your short message to the user. The options array should "
-                            "contain up to three short user responses."
+                            "You are narrating a typical day as a veterinary internal "
+                            "medicine specialist. After each scenario respond only with "
+                            "valid JSON containing keys 'reply' and 'options'. The reply "
+                            "is a short description of the next situation. The options "
+                            "array lists three numbered choices (1, 2, 3) that the user "
+                            "can type to decide what to do next. Use the user's previous "
+                            "choice to generate the following scenario."
                         ),
                     }
                 ]
