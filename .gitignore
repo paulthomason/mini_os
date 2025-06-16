@@ -1,3 +1,4 @@
 __pycache__/
 *.pyc
 nyt_config.py
+openai_config.py

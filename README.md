@@ -65,6 +65,8 @@ The service definition will start the program on boot and restart it automatical
 
 The menu can fetch headlines from the New York Times API. Copy `nyt_config.py.example` to `nyt_config.py` and add your API key. The file is in `.gitignore` so your key stays local.
 
+An additional `openai_config.py.example` provides a placeholder for your OpenAI API key. Copy it to `openai_config.py` and enter your key to enable the AI‑generated quiz game.
+
 ## Web Interface
 
 A lightweight web server can be started from the **Utilities** menu. It exposes

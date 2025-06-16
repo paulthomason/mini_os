@@ -18,6 +18,7 @@ NOTES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "notes")
 os.makedirs(NOTES_DIR, exist_ok=True)
 
 NYT_API_KEY = None
+OPENAI_API_KEY = None
 CHAT_LOG = []
 
 WEB_GAMES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web_games")
@@ -67,6 +68,15 @@ def load_nyt_api_key():
     except Exception:
         NYT_API_KEY = "YOUR_API_KEY_HERE"
 
+def load_openai_api_key():
+    """Try to load OpenAI API key from openai_config.py"""
+    global OPENAI_API_KEY
+    try:
+        from openai_config import OPENAI_API_KEY as KEY
+        OPENAI_API_KEY = KEY
+    except Exception:
+        OPENAI_API_KEY = "YOUR_API_KEY_HERE"
+
 def save_nyt_api_key(key: str):
     """Write the NYT API key to nyt_config.py."""
     global NYT_API_KEY
@@ -75,6 +85,17 @@ def save_nyt_api_key(key: str):
         with open(config_path, "w") as f:
             f.write(f'NYT_API_KEY = "{key}"\n')
         NYT_API_KEY = key
+    except Exception:
+        pass
+
+def save_openai_api_key(key: str):
+    """Write the OpenAI API key to openai_config.py."""
+    global OPENAI_API_KEY
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "openai_config.py")
+    try:
+        with open(config_path, "w") as f:
+            f.write(f'OPENAI_API_KEY = "{key}"\n')
+        OPENAI_API_KEY = key
     except Exception:
         pass
 
@@ -171,17 +192,23 @@ def settings():
 def api_keys():
     """View and update API keys used by Mini OS."""
     load_nyt_api_key()
+    load_openai_api_key()
     if request.method == "POST":
         key = request.form.get("nyt_key", "").strip()
         if key:
             save_nyt_api_key(key)
+        okey = request.form.get("openai_key", "").strip()
+        if okey:
+            save_openai_api_key(okey)
         return redirect("/api-keys")
 
     current = NYT_API_KEY or ""
+    current_oa = OPENAI_API_KEY or ""
     html = ["<h1>API Keys</h1>"]
     html.append(
         "<form method='post'>"
         f"NYT API Key: <input name='nyt_key' value='{current}'><br>"
+        f"OpenAI API Key: <input name='openai_key' value='{current_oa}'><br>"
         "<button type='submit'>Save</button></form>"
     )
     html.append("<p><a href='/'>Back</a></p>")
