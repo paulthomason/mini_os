@@ -36,6 +36,7 @@ typed_text = ""
 kb_row = 1
 kb_col = 0
 keyboard_state = 1  # start with lowercase
+keyboard_visible = True
 
 KEYBOARD_UPPER = [
     list("QWERTYUIOP"),
@@ -139,7 +140,7 @@ def init(display_func, fonts_tuple, quit_callback):
 
 
 def start():
-    global conversation, typed_text, kb_row, kb_col, keyboard_state, KEY_LAYOUT, text_offset, messages
+    global conversation, typed_text, kb_row, kb_col, keyboard_state, KEY_LAYOUT, text_offset, messages, keyboard_visible
     log("AI Cases game started", reset=True)
     load_api_key()
     messages = []
@@ -151,11 +152,24 @@ def start():
     keyboard_state = 1
     KEY_LAYOUT = KEY_LAYOUTS[keyboard_state]
     text_offset = 0
+    keyboard_visible = True
     draw()
 
 
 def handle_input(pin):
-    global conversation, typed_text, kb_row, kb_col, keyboard_state, KEY_LAYOUT, text_offset
+    global conversation, typed_text, kb_row, kb_col, keyboard_state, KEY_LAYOUT, text_offset, keyboard_visible
+    if not keyboard_visible:
+        if pin == "JOY_PRESS":
+            keyboard_visible = True
+            draw()
+            return
+        if pin == "JOY_UP":
+            scroll_text(-1)
+            return
+        if pin == "JOY_DOWN":
+            scroll_text(1)
+            return
+        return
     if pin == "JOY_PRESS":
         ch = KEY_LAYOUT[kb_row][kb_col]
         typed_text += ch
@@ -203,6 +217,7 @@ def handle_input(pin):
                 conversation = conversation[-20:]
             typed_text = ""
             text_offset = 0
+            keyboard_visible = False
             draw()
         else:
             exit_cb()
@@ -214,12 +229,17 @@ def draw():
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
 
-    kb_y = 70
+    if keyboard_visible:
+        kb_y = 70
+    else:
+        kb_y = 128
+
     y = 5 - text_offset
     lines = []
     for line in conversation:
         lines.extend(wrap_text(line, fonts[1], 118, d))
-    lines.extend(wrap_text("You: " + typed_text, fonts[1], 118, d))
+    if keyboard_visible or typed_text:
+        lines.extend(wrap_text("You: " + typed_text, fonts[1], 118, d))
 
     line_height = fonts[1].getbbox("A")[3] + 2
     total_height = len(lines) * line_height
@@ -230,31 +250,34 @@ def draw():
             d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
         y += line_height
 
-    row_h = (128 - kb_y - 10) // len(KEY_LAYOUT)
-    key_w = 128 // 10
-    for r, row in enumerate(KEY_LAYOUT):
-        if r == len(KEY_LAYOUT) - 1 and len(row) == 1:
-            ox = 5
-            kw = 128 - ox * 2
-        else:
-            ox = (128 - len(row) * key_w) // 2
-            kw = key_w
-        for c, ch in enumerate(row):
-            x = ox + c * kw
-            yk = kb_y + r * row_h
-            rect = (x + 1, yk + 1, x + kw - 2, yk + row_h - 2)
-            if r == kb_row and c == kb_col:
-                d.rectangle(rect, fill=(0, 255, 0))
-                text_color = (0, 0, 0)
+    if keyboard_visible:
+        row_h = (128 - kb_y - 10) // len(KEY_LAYOUT)
+        key_w = 128 // 10
+        for r, row in enumerate(KEY_LAYOUT):
+            if r == len(KEY_LAYOUT) - 1 and len(row) == 1:
+                ox = 5
+                kw = 128 - ox * 2
             else:
-                d.rectangle(rect, outline=(255, 255, 255))
-                text_color = (255, 255, 255)
-            bbox = d.textbbox((0, 0), ch, font=fonts[0])
-            tx = x + (kw - (bbox[2] - bbox[0])) // 2
-            ty = yk + (row_h - (bbox[3] - bbox[1])) // 2
-            d.text((tx, ty), ch, font=fonts[0], fill=text_color)
+                ox = (128 - len(row) * key_w) // 2
+                kw = key_w
+            for c, ch in enumerate(row):
+                x = ox + c * kw
+                yk = kb_y + r * row_h
+                rect = (x + 1, yk + 1, x + kw - 2, yk + row_h - 2)
+                if r == kb_row and c == kb_col:
+                    d.rectangle(rect, fill=(0, 255, 0))
+                    text_color = (0, 0, 0)
+                else:
+                    d.rectangle(rect, outline=(255, 255, 255))
+                    text_color = (255, 255, 255)
+                bbox = d.textbbox((0, 0), ch, font=fonts[0])
+                tx = x + (kw - (bbox[2] - bbox[0])) // 2
+                ty = yk + (row_h - (bbox[3] - bbox[1])) // 2
+                d.text((tx, ty), ch, font=fonts[0], fill=text_color)
 
-    tips = "1=Shift 2=Del 3=Send"
+        tips = "1=Shift 2=Del 3=Send"
+    else:
+        tips = "Press stick to type"
     d.text((5, 128 - 10 + 2), tips, font=fonts[0], fill=(0, 255, 255))
 
     thread_safe_display(img)
