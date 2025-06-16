@@ -4,6 +4,8 @@ from datetime import datetime
 
 import openai
 from PIL import Image, ImageDraw
+import time
+import threading
 
 from .trivia import wrap_text
 
@@ -35,6 +37,10 @@ MISSING_KEY_MSG = (
 messages = []
 conversation = []
 current_options = []
+
+reveal_thread = None
+reveal_stop = threading.Event()
+ai_display_len = 0
 
 text_offset = 0
 text_max_offset = 0
@@ -69,7 +75,7 @@ def request_chat(message):
                         "role": "system",
                         "content": (
                             "You are a veterinary internal medicine specialist managing "
-                            "complex cases. After each scenario respond only with valid JSON "
+                            "complex cases using highly abbreviated vet med shorthand. After each scenario respond only with valid JSON "
                             "containing keys 'reply' and 'options'. The 'reply' is a short "
                             "description of the next situation. The 'options' array must "
                             "contain exactly three concise numbered actions the user can take. "
@@ -108,6 +114,45 @@ def request_chat(message):
     }
 
 
+def stop_reveal():
+    """Stop any ongoing text reveal animation."""
+    global reveal_thread, ai_display_len
+    if reveal_thread:
+        reveal_stop.set()
+        reveal_thread.join()
+        reveal_thread = None
+    if conversation:
+        ai_display_len = len(conversation[-1])
+
+
+def start_reveal():
+    """Animate AI text appearing one character at a time."""
+    global reveal_thread, ai_display_len
+
+    stop_reveal()
+
+    if not conversation:
+        return
+
+    full_text = conversation[-1]
+
+    def task():
+        global ai_display_len, reveal_thread
+        for i in range(len(full_text)):
+            if reveal_stop.is_set():
+                break
+            ai_display_len = i + 1
+            draw(partial=True)
+            time.sleep(0.05)
+        ai_display_len = len(full_text)
+        draw()
+        reveal_thread = None
+
+    reveal_stop.clear()
+    reveal_thread = threading.Thread(target=task, daemon=True)
+    reveal_thread.start()
+
+
 def init(display_func, fonts_tuple, quit_callback):
     global thread_safe_display, fonts, exit_cb
     thread_safe_display = display_func
@@ -117,7 +162,7 @@ def init(display_func, fonts_tuple, quit_callback):
 
 def start():
     """Begin a new AI Cases session."""
-    global conversation, current_options, text_offset, messages
+    global conversation, current_options, text_offset, messages, ai_display_len
     log("AI Cases game started", reset=True)
     load_api_key()
     messages = []
@@ -126,12 +171,13 @@ def start():
     conversation = ["AI: " + data.get("reply", "")]
     current_options = data.get("options", [])
     text_offset = 0
-    draw()
+    ai_display_len = 0
+    start_reveal()
 
 
 def _select_option(num: int):
     """Send the chosen option to the AI and update conversation."""
-    global conversation, current_options, text_offset
+    global conversation, current_options, text_offset, ai_display_len
     if not current_options:
         exit_cb()
         return
@@ -143,11 +189,13 @@ def _select_option(num: int):
     conversation.append("AI: " + data.get("reply", ""))
     current_options = data.get("options", [])
     text_offset = 0
-    draw()
+    ai_display_len = 0
+    start_reveal()
 
 
 def handle_input(pin):
     """Process a hardware button press."""
+    stop_reveal()
     if pin == "JOY_UP":
         scroll_text(-1)
         return
@@ -165,7 +213,7 @@ def handle_input(pin):
         return
 
 
-def draw():
+def draw(partial=False):
     global text_max_offset, line_height, text_offset
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
@@ -173,10 +221,13 @@ def draw():
     kb_y = 128
     y = 5 - text_offset
     lines = []
-    for line in conversation:
+    for idx, line in enumerate(conversation):
+        if partial and idx == len(conversation) - 1:
+            line = line[:ai_display_len]
         lines.extend(wrap_text(line, fonts[1], 118, d))
-    for i, opt in enumerate(current_options, 1):
-        lines.extend(wrap_text(f"{i}) {opt}", fonts[1], 118, d))
+    if not partial:
+        for i, opt in enumerate(current_options, 1):
+            lines.extend(wrap_text(f"{i}) {opt}", fonts[1], 118, d))
 
     line_height = fonts[1].getbbox("A")[3] + 2
     total_height = len(lines) * line_height
@@ -188,6 +239,8 @@ def draw():
         y += line_height
 
     hint = "Press 1-3 to choose" if current_options else "Press any key to exit"
+    if partial:
+        hint = ""
     d.text((5, 128 - 10 + 2), hint, font=fonts[0], fill=(0, 255, 255))
 
     thread_safe_display(img)
