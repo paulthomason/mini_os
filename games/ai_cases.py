@@ -8,10 +8,9 @@ fonts = None
 exit_cb = None
 
 OPENAI_API_KEY = None
-score = 0
-cases_completed = 0
-current_case = {}
-step_idx = 0
+messages = []
+conversation = []
+current_options = []
 text_offset = 0
 text_max_offset = 0
 line_height = 0
@@ -26,36 +25,39 @@ def load_api_key():
         OPENAI_API_KEY = "YOUR_API_KEY_HERE"
 
 
-def generate_case():
-    """Request a new case from OpenAI or return a fallback."""
+def request_chat(message):
+    """Send the conversation to OpenAI and return reply/options."""
+    global messages
     if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_API_KEY_HERE":
         openai.api_key = OPENAI_API_KEY
-        prompt = (
-            "Create a short veterinary internal medicine scenario for a quiz. "
-            "Return JSON with keys intro (2 short sentences), question, options "
-            "(3 choices), answer (index 0-2), explanation (one sentence)."
-        )
+        messages.append({"role": "user", "content": message})
         try:
             resp = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a friendly assistant. "
+                            "After each user message respond with JSON: "
+                            "{'reply': '<assistant reply>', 'options': ['choice1','choice2','choice3']} "
+                            "where options are short user responses."
+                        ),
+                    }
+                ]
+                + messages,
                 temperature=0.7,
             )
             txt = resp.choices[0].message["content"].strip()
             data = json.loads(txt)
-            if isinstance(data, dict):
+            if isinstance(data, dict) and "reply" in data and "options" in data:
+                messages.append({"role": "assistant", "content": data["reply"]})
                 return data
         except Exception:
-            pass
+            messages.pop()  # remove user message if failed
     return {
-        "intro": [
-            "Lucy the Labrador is lethargic and vomiting.",
-            "Bloodwork shows elevated liver enzymes."
-        ],
-        "question": "Which condition is most likely?",
-        "options": ["Pancreatitis", "Hepatic lipidosis", "Renal failure"],
-        "answer": 0,
-        "explanation": "Pancreatitis often causes vomiting with liver enzyme elevation in dogs."
+        "reply": "Hello! How can I help you?",
+        "options": ["Tell me a joke", "How's the weather?", "Bye"],
     }
 
 
@@ -67,23 +69,18 @@ def init(display_func, fonts_tuple, quit_callback):
 
 
 def start():
-    global score, cases_completed
+    global conversation, current_options, text_offset, messages
     load_api_key()
-    score = 0
-    cases_completed = 0
-    next_case()
-
-
-def next_case():
-    global current_case, step_idx, text_offset
-    current_case = generate_case()
-    step_idx = 0
+    messages = []
+    data = request_chat("Start the conversation.")
+    conversation = ["AI: " + data["reply"]]
+    current_options = list(data.get("options", []))
     text_offset = 0
     draw()
 
 
 def handle_input(pin):
-    global step_idx, text_offset, score, cases_completed
+    global conversation, current_options, text_offset
     if pin == "JOY_PRESS":
         exit_cb()
         return
@@ -93,33 +90,20 @@ def handle_input(pin):
     if pin == "JOY_DOWN":
         scroll_text(1)
         return
-    if step_idx == 0:
-        if pin == "KEY1":
-            step_idx = 1
-            text_offset = 0
-            draw()
-    elif step_idx == 1:
-        if pin == "KEY1":
-            choice = 0
-        elif pin == "KEY2":
-            choice = 1
-        elif pin == "KEY3":
-            choice = 2
-        else:
+    if pin in ("KEY1", "KEY2", "KEY3"):
+        idx = {"KEY1": 0, "KEY2": 1, "KEY3": 2}[pin]
+        if idx >= len(current_options):
             return
-        if choice == current_case.get("answer", 0):
-            score += 1
-            feedback = ["Correct!", current_case.get("explanation", "")]
-        else:
-            feedback = ["Incorrect.", current_case.get("explanation", "")]
-        current_case["feedback"] = feedback
-        step_idx = 2
+        user_msg = current_options[idx]
+        conversation.append("You: " + user_msg)
+        data = request_chat(user_msg)
+        conversation.append("AI: " + data["reply"])
+        current_options = list(data.get("options", []))
+        # keep only recent 20 lines
+        if len(conversation) > 20:
+            conversation = conversation[-20:]
         text_offset = 0
         draw()
-    elif step_idx == 2:
-        if pin == "KEY1":
-            cases_completed += 1
-            next_case()
 
 
 def draw():
@@ -128,46 +112,21 @@ def draw():
     d = ImageDraw.Draw(img)
     y = 5 - text_offset
     lines = []
-    if step_idx == 0:
-        for line in current_case.get("intro", []):
-            lines.extend(wrap_text(line, fonts[1], 118, d))
-        line_height = fonts[1].getbbox("A")[3] + 2
-        total_height = len(lines) * line_height
-        text_max_offset = max(0, total_height - 65)
-        text_offset = min(text_offset, text_max_offset)
-        for line in lines:
-            if 5 <= y < 70:
-                d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
-            y += line_height
-        d.text((5, 70), "1=Next", font=fonts[0], fill=(0, 255, 255))
-    elif step_idx == 1:
-        lines = wrap_text(current_case.get("question", ""), fonts[1], 118, d)
-        line_height = fonts[1].getbbox("A")[3] + 2
-        total_height = len(lines) * line_height
-        text_max_offset = max(0, total_height - 65)
-        text_offset = min(text_offset, text_max_offset)
-        for line in lines:
-            if 5 <= y < 70:
-                d.text((5, y), line, font=fonts[1], fill=(255, 255, 0))
-            y += line_height
-        opt_y = 70
-        opt_h = fonts[0].getbbox("A")[3] + 2
-        for idx, opt in enumerate(current_case.get("options", []), 1):
-            d.text((5, opt_y), f"{idx}={opt}", font=fonts[0], fill=(0, 255, 255))
-            opt_y += opt_h
-    else:
-        for line in current_case.get("feedback", []):
-            lines.extend(wrap_text(line, fonts[1], 118, d))
-        lines.append(f"Score: {score}/{cases_completed}")
-        line_height = fonts[1].getbbox("A")[3] + 2
-        total_height = len(lines) * line_height
-        text_max_offset = max(0, total_height - 85)
-        text_offset = min(text_offset, text_max_offset)
-        for line in lines:
-            if 5 <= y < 90:
-                d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
-            y += line_height
-        d.text((5, 90), "1=Continue", font=fonts[0], fill=(0, 255, 255))
+    for line in conversation:
+        lines.extend(wrap_text(line, fonts[1], 118, d))
+    line_height = fonts[1].getbbox("A")[3] + 2
+    total_height = len(lines) * line_height
+    text_max_offset = max(0, total_height - 65)
+    text_offset = min(text_offset, text_max_offset)
+    for line in lines:
+        if 5 <= y < 70:
+            d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
+        y += line_height
+    opt_y = 70
+    opt_h = fonts[0].getbbox("A")[3] + 2
+    for i, opt in enumerate(current_options, 1):
+        d.text((5, opt_y), f"{i}={opt}", font=fonts[0], fill=(0, 255, 255))
+        opt_y += opt_h
     thread_safe_display(img)
 
 
@@ -181,3 +140,4 @@ def scroll_text(direction):
     if text_offset > text_max_offset:
         text_offset = text_max_offset
     draw()
+
