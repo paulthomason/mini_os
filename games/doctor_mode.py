@@ -1,5 +1,6 @@
 import random
 from PIL import Image, ImageDraw
+from .trivia import wrap_text
 
 thread_safe_display = None
 fonts = None
@@ -239,14 +240,19 @@ def draw():
     img = Image.new("RGB", (128, 128), "black")
     d = ImageDraw.Draw(img)
     y = 5
+    lines = []
     for line in step["text"]:
+        lines.extend(wrap_text(line, fonts[1], 118, d))
+    line_h = fonts[1].getbbox("A")[3] + 2
+    for line in lines:
         d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
-        y += 20
+        y += line_h
     if step["choices"]:
         y = 70
+        opt_h = fonts[0].getbbox("A")[3] + 2
         for idx, label in enumerate(step["choices"], 1):
             d.text((5, y), f"{idx}={label}", font=fonts[0], fill=(0, 255, 255))
-            y += 12
+            y += opt_h
     else:
         d.text((25, 70), "(Press)", font=fonts[0], fill=(0, 255, 255))
     thread_safe_display(img)
