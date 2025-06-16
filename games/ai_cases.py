@@ -72,9 +72,9 @@ def request_chat(message):
                             "medicine specialist. After each scenario respond only with "
                             "valid JSON containing keys 'reply' and 'options'. The reply "
                             "is a short description of the next situation. The options "
-                            "array lists three numbered choices (1, 2, 3) that the user "
-                            "can type to decide what to do next. Use the user's previous "
-                            "choice to generate the following scenario."
+                            "array must contain exactly three short numbered choices (1, 2, 3) "
+                            "that the user can select to decide what to do next. Use the user's "
+                            "previous choice to generate the following scenario."
                         ),
                     }
                 ]
@@ -84,10 +84,16 @@ def request_chat(message):
             )
             txt = resp.choices[0].message["content"].strip()
             data = json.loads(txt)
-            if isinstance(data, dict) and "reply" in data and "options" in data:
+            if (
+                isinstance(data, dict)
+                and "reply" in data
+                and isinstance(data.get("options"), list)
+                and len(data["options"]) == 3
+            ):
                 messages.append({"role": "assistant", "content": data["reply"]})
                 log("OpenAI response parsed successfully")
                 return data
+            log("Invalid AI response structure")
         except Exception as e:
             messages.pop()  # remove user message if failed
             log(f"OpenAI API call failed: {e}")
@@ -180,7 +186,8 @@ def draw():
             d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
         y += line_height
 
-    d.text((5, 128 - 10 + 2), "Press 1-3 to choose", font=fonts[0], fill=(0, 255, 255))
+    hint = "Press 1-3 to choose" if current_options else "Press any key to exit"
+    d.text((5, 128 - 10 + 2), hint, font=fonts[0], fill=(0, 255, 255))
 
     thread_safe_display(img)
 
