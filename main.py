@@ -14,6 +14,7 @@ import webbrowser
 import shutil
 import socket
 import json
+import html
 import pexpect
 from games import (
     snake,
@@ -351,6 +352,17 @@ gallery_index = 0
 # --- Notes Directory ---
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "notes")
 os.makedirs(NOTES_DIR, exist_ok=True)
+
+# --- Web Browser ---
+web_url = "https://example.com"
+web_lines = []
+web_line_h = 0
+web_offset = 0
+web_max_offset = 0
+web_keyboard_visible = True
+web_keyboard_state = 1
+web_row = 1
+web_col = 0
 
 # Configuration file for persisting settings like color scheme
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
@@ -908,6 +920,8 @@ def button_event_handler(channel):
             handle_raspi_input(pin_name)
         elif menu_instance.current_screen == "irc_chat":
             handle_irc_chat_input(pin_name)
+        elif menu_instance.current_screen == "web_browser":
+            handle_web_browser_input(pin_name)
     else: # Button released
         button_states[pin_name] = False
         hold_time = current_time - press_start_time.get(pin_name, current_time)
@@ -2097,6 +2111,136 @@ def start_mini_games():
         "Mini Games", f"Open http://{ip_addr}:8000/mini-games", delay=4
     )
     show_games_menu()
+
+# --- World Wide Web ---
+
+def fetch_web_content(url):
+    """Fetch the given URL and convert HTML to plain text."""
+    global web_lines, web_line_h, web_offset, web_max_offset
+    try:
+        resp = requests.get(url, timeout=5)
+        html_text = resp.text
+        html_text = re.sub(r"<(script|style).*?>.*?</\1>", "", html_text, flags=re.S | re.I)
+        text = re.sub(r"<[^>]+>", "", html_text)
+        text = html.unescape(text)
+    except Exception as e:
+        text = f"Failed to load: {e}"
+    dummy_img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    max_width = DISPLAY_WIDTH - 10
+    web_lines = wrap_text(text, font_small, max_width, dummy_draw)
+    web_line_h = dummy_draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+    available_h = DISPLAY_HEIGHT - 35
+    web_max_offset = max(0, len(web_lines) * web_line_h - available_h)
+    web_offset = 0
+
+
+def draw_web_browser_screen():
+    """Render the current web page or URL entry."""
+    img = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color="black")
+    draw = ImageDraw.Draw(img)
+    max_width = DISPLAY_WIDTH - 10
+    tips_height = 10
+    if web_keyboard_visible:
+        kb_y = DISPLAY_HEIGHT // 2 - KEYBOARD_OFFSET
+        draw.text((5, 5), "World Wide Web", font=font_large, fill=(255, 255, 0))
+        line_h = draw.textbbox((0, 0), "A", font=font_small)[3] + 2
+        y = 25
+        for line in wrap_text(web_url, font_small, max_width, draw):
+            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+            y += line_h
+
+        row_h = (DISPLAY_HEIGHT - kb_y - tips_height) // len(KEY_LAYOUT)
+        key_w = DISPLAY_WIDTH // 10
+        for r, row in enumerate(KEY_LAYOUT):
+            if r == len(KEY_LAYOUT) - 1 and len(row) == 1:
+                offset_x = 5
+                this_key_w = DISPLAY_WIDTH - offset_x * 2
+            else:
+                offset_x = (DISPLAY_WIDTH - len(row) * key_w) // 2
+                this_key_w = key_w
+            for c, ch in enumerate(row):
+                x = offset_x + c * this_key_w
+                y = kb_y + r * row_h
+                rect = (x + 1, y + 1, x + this_key_w - 2, y + row_h - 2)
+                if r == web_row and c == web_col:
+                    draw.rectangle(rect, fill=(0, 255, 0))
+                    text_color = (0, 0, 0)
+                else:
+                    draw.rectangle(rect, outline=(255, 255, 255))
+                    text_color = (255, 255, 255)
+                bbox = draw.textbbox((0, 0), ch, font=font_small)
+                tx = x + (this_key_w - (bbox[2] - bbox[0])) // 2
+                ty = y + (row_h - (bbox[3] - bbox[1])) // 2
+                draw.text((tx, ty), ch, font=font_small, fill=text_color)
+
+        draw.text((5, DISPLAY_HEIGHT - tips_height + 2), "1=Shift 2=Del 3=Go", font=font_small, fill=(0, 255, 255))
+    else:
+        y = 5 - web_offset
+        line_h = web_line_h
+        draw.text((5, y), web_url, font=font_small, fill=(255, 255, 0))
+        y += line_h + 2
+        for line in web_lines:
+            draw.text((5, y), line, font=font_small, fill=(255, 255, 255))
+            y += line_h
+        draw.text((5, DISPLAY_HEIGHT - 10), "3=Keyboard 1=Back", font=font_small, fill=(0, 255, 255))
+
+    thread_safe_display(img)
+
+
+def start_web_browser():
+    """Launch the simple text-based web browser."""
+    global web_url, web_keyboard_state, KEY_LAYOUT, web_row, web_col, web_keyboard_visible
+    stop_scrolling()
+    web_url = "https://example.com"
+    web_keyboard_state = 1
+    KEY_LAYOUT = KEY_LAYOUTS[web_keyboard_state]
+    web_row = 1
+    web_col = 0
+    web_keyboard_visible = True
+    menu_instance.current_screen = "web_browser"
+    draw_web_browser_screen()
+
+
+def handle_web_browser_input(pin_name):
+    """Handle joystick and button input for the web browser."""
+    global web_row, web_col, web_url, web_keyboard_state, KEY_LAYOUT, web_keyboard_visible, web_offset
+
+    if web_keyboard_visible:
+        if pin_name == "JOY_LEFT" and web_col > 0:
+            web_col -= 1
+        elif pin_name == "JOY_RIGHT" and web_col < len(KEY_LAYOUT[web_row]) - 1:
+            web_col += 1
+        elif pin_name == "JOY_UP" and web_row > 0:
+            web_row -= 1
+            web_col = min(web_col, len(KEY_LAYOUT[web_row]) - 1)
+        elif pin_name == "JOY_DOWN" and web_row < len(KEY_LAYOUT) - 1:
+            web_row += 1
+            web_col = min(web_col, len(KEY_LAYOUT[web_row]) - 1)
+        elif pin_name == "JOY_PRESS":
+            web_url += KEY_LAYOUT[web_row][web_col]
+        elif pin_name == "KEY1":
+            web_keyboard_state = (web_keyboard_state + 1) % len(KEY_LAYOUTS)
+            KEY_LAYOUT = KEY_LAYOUTS[web_keyboard_state]
+            web_row = min(web_row, len(KEY_LAYOUT) - 1)
+            web_col = min(web_col, len(KEY_LAYOUT[web_row]) - 1)
+        elif pin_name == "KEY2":
+            web_url = web_url[:-1]
+        elif pin_name == "KEY3":
+            web_keyboard_visible = False
+            fetch_web_content(web_url)
+        draw_web_browser_screen()
+    else:
+        if pin_name == "JOY_UP":
+            web_offset = max(0, web_offset - web_line_h)
+        elif pin_name == "JOY_DOWN":
+            web_offset = min(web_max_offset, web_offset + web_line_h)
+        elif pin_name == "KEY3":
+            web_keyboard_visible = True
+        elif pin_name == "KEY1":
+            show_utilities_menu()
+            return
+        draw_web_browser_screen()
 
 # --- Reaction Game ---
 
@@ -3580,6 +3724,7 @@ def show_utilities_menu():
         "Network Info",
         "Date & Time",
         "Show Info",
+        "World Wide Web",
         "Web Server",
         "Shell",
         "Console",
@@ -3600,6 +3745,8 @@ def handle_utilities_selection(selection):
         show_date_time()
     elif selection == "Show Info":
         show_info()
+    elif selection == "World Wide Web":
+        start_web_browser()
     elif selection == "Web Server":
         start_web_server()
     elif selection == "Shell":
