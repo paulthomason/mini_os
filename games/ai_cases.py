@@ -68,13 +68,13 @@ def request_chat(message):
                     {
                         "role": "system",
                         "content": (
-                            "You are narrating a typical day as a veterinary internal "
-                            "medicine specialist. After each scenario respond only with "
-                            "valid JSON containing keys 'reply' and 'options'. The 'reply' "
-                            "is a short description of the next situation. The 'options' "
-                            "array must contain exactly three brief descriptions of actions "
-                            "the user can take, each prefixed with its number (1, 2, 3). "
-                            "Use the user's previous choice to generate the following scenario."
+                            "You are a veterinary internal medicine specialist managing "
+                            "complex cases. After each scenario respond only with valid JSON "
+                            "containing keys 'reply' and 'options'. The 'reply' is a short "
+                            "description of the next situation. The 'options' array must "
+                            "contain exactly three brief descriptions of actions the user can "
+                            "take, each prefixed with its number (1, 2, 3). Use the user's "
+                            "previous choice to generate the following scenario."
                         ),
                     }
                 ]
@@ -121,9 +121,12 @@ def start():
     load_api_key()
     messages = []
     data = request_chat("Start the conversation.")
-    conversation = ["AI: " + data.get("reply", "")] 
+    # Reset conversation so each scenario appears on a fresh screen
+    conversation = ["AI: " + data.get("reply", "")]
     current_options = data.get("options", [])
     text_offset = 0
+    draw()
+    text_offset = text_max_offset
     draw()
 
 
@@ -135,13 +138,15 @@ def _select_option(num: int):
         return
     if num < 1 or num > len(current_options):
         return
-    conversation.append(f"You: {num}")
+    # Replace conversation with the latest choice and response
+    conversation = [f"You: {num}"]
     data = request_chat(str(num))
     conversation.append("AI: " + data.get("reply", ""))
     current_options = data.get("options", [])
-    if len(conversation) > 20:
-        conversation = conversation[-20:]
     text_offset = 0
+    draw()
+    # After drawing once update offset to show the latest response
+    text_offset = text_max_offset
     draw()
 
 
