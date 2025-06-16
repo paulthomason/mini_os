@@ -4,3 +4,4 @@ requests
 Flask
 pexpect>=4.9.0
 flask-sock
+openai
