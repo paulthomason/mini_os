@@ -26,6 +26,10 @@ fonts = None
 exit_cb = None
 
 OPENAI_API_KEY = None
+MISSING_KEY_MSG = (
+    "OpenAI API key not found. Please create openai_config.py "
+    "with your key to enable chatting."
+)
 messages = []
 conversation = []
 current_options = []
@@ -42,8 +46,8 @@ def load_api_key():
         OPENAI_API_KEY = KEY
         log("Loaded API key successfully")
     except Exception as e:
-        OPENAI_API_KEY = "YOUR_API_KEY_HERE"
-        log(f"Failed to load API key: {e}. Using placeholder")
+        OPENAI_API_KEY = None
+        log(f"Failed to load API key: {e}")
 
 
 def request_chat(message):
@@ -80,6 +84,9 @@ def request_chat(message):
         except Exception as e:
             messages.pop()  # remove user message if failed
             log(f"OpenAI API call failed: {e}")
+    else:
+        log("OpenAI API key not configured")
+        return {"reply": MISSING_KEY_MSG, "options": []}
     log("Using fallback response")
     return {
         "reply": "Hello! How can I help you?",
