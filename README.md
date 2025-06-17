@@ -66,7 +66,11 @@ The service definition will start the program on boot and restart it automatical
 The menu can fetch headlines from the New York Times API. Copy `nyt_config.py.example` to `nyt_config.py` and add your API key. The file is in `.gitignore` so your key stays local.
 
 An additional `openai_config.py.example` provides a placeholder for your OpenAI API key. Copy it to `openai_config.py` and enter your key to enable the AI‑powered **AI Cases** game. The AI narrates a day in veterinary internal medicine and offers three short numbered choices describing what you can do next. Select your option using the hardware buttons.
+<<<<<<< codex/return-to-main-menu-on-joystick-hold
 To leave the game at any time, hold the joystick to the left for about a second and you'll return to the main menu.
+=======
+The same key now powers **Vet Adventure**, a lighthearted text adventure set in a bustling clinic.
+>>>>>>> main
 
 ## Web Interface
 
