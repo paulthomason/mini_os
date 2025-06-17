@@ -67,6 +67,8 @@ The menu can fetch headlines from the New York Times API. Copy `nyt_config.py.ex
 
 An additional `openai_config.py.example` provides a placeholder for your OpenAI API key. Copy it to `openai_config.py` and enter your key or set the `OPENAI_API_KEY` environment variable to enable the AI‑powered **AI Cases** game. The AI narrates a day in veterinary internal medicine and offers three short numbered choices describing what you can do next. The same key now powers **Vet Adventure**, a lighthearted text adventure set in a bustling clinic. Setting `VA_OPENAI_API_KEY` will override the general key for Vet Adventure if desired.
 
+The system prompt used for **AI Cases** is stored in `systemprompt.txt` at the repository root. Edit that file to change the instructions without modifying the code.
+
 To leave the game at any time, hold the joystick to the left for about a second and you'll return to the main menu.
 
 ## Web Interface
