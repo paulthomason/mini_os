@@ -88,7 +88,7 @@ def load_va_openai_api_key():
         from vet_openai_config import VA_OPENAI_API_KEY as KEY
         VA_OPENAI_API_KEY = KEY
     except Exception:
-        VA_OPENAI_API_KEY = OPENAI_API_KEY or "YOUR_API_KEY_HERE"
+        VA_OPENAI_API_KEY = "YOUR_API_KEY_HERE"
 
 def save_nyt_api_key(key: str):
     """Write the NYT API key to nyt_config.py."""
