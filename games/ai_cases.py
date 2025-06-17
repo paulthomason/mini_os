@@ -241,11 +241,6 @@ def draw(partial=False):
             d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
         y += line_height
 
-    hint = "Press 1-3 to choose" if current_options else "Press any key to exit"
-    if partial:
-        hint = ""
-    d.text((5, 128 - 10 + 2), hint, font=fonts[0], fill=(0, 255, 255))
-
     thread_safe_display(img)
 
 
