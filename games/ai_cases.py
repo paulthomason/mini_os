@@ -14,6 +14,35 @@ NOTES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "notes")
 os.makedirs(NOTES_DIR, exist_ok=True)
 LOG_PATH = os.path.join(NOTES_DIR, "ailog1.txt")
 
+# Path to the editable system prompt file
+PROMPT_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "systemprompt.txt")
+
+# Default system prompt used if the text file is missing
+DEFAULT_PROMPT = (
+    "You are a veterinary internal medicine specialist managing "
+    "complex cases using extremely terse vet med shorthand. Abbreviate age, "
+    "sex/neuter status, breed and all common phrases whenever possible (e.g. '10yr "
+    "MN Lab w/ hx of chronic vomiting and wt loss'). After each scenario respond "
+    "only with valid JSON containing keys 'reply' and 'options'. The 'reply' is a "
+    "short description of the next situation. The 'options' array must contain "
+    "exactly three concise numbered actions the user can take. Avoid yes/no or "
+    "trivial choices like deciding whether to perform a physical exam—the exam has "
+    "already been completed. Use the user's previous choice to generate the "
+    "following scenario."
+)
+
+
+def load_system_prompt() -> str:
+    """Read the system prompt text from ``systemprompt.txt`` if available."""
+    try:
+        with open(PROMPT_PATH, "r", encoding="utf-8") as f:
+            text = f.read().strip()
+            if text:
+                return text
+    except Exception as e:
+        log(f"Failed to load system prompt: {e}")
+    return DEFAULT_PROMPT
+
 
 def log(message, *, reset=False):
     """Append a timestamped message to the ailog1.txt file."""
@@ -74,6 +103,7 @@ def request_chat(message):
     if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_API_KEY_HERE":
         openai.api_key = OPENAI_API_KEY
         messages.append({"role": "user", "content": message})
+        prompt = load_system_prompt()
         log("Sending message to OpenAI")
         try:
             resp = openai.ChatCompletion.create(
@@ -81,19 +111,7 @@ def request_chat(message):
                 messages=[
                     {
                         "role": "system",
-                        "content": (
-                            "You are a veterinary internal medicine specialist managing "
-                            "complex cases using extremely terse vet med shorthand. "
-                            "Abbreviate age, sex/neuter status, breed and all common phrases "
-                            "whenever possible (e.g. '10yr MN Lab w/ hx of chronic vomiting "
-                            "and wt loss'). After each scenario respond only with valid JSON "
-                            "containing keys 'reply' and 'options'. The 'reply' is a short "
-                            "description of the next situation. The 'options' array must "
-                            "contain exactly three concise numbered actions the user can take. "
-                            "Avoid yes/no or trivial choices like deciding whether to perform a "
-                            "physical exam—the exam has already been completed. Use the user's "
-                            "previous choice to generate the following scenario."
-                        ),
+                        "content": prompt,
                     }
                 ]
                 + messages,
