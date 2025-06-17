@@ -19,6 +19,7 @@ os.makedirs(NOTES_DIR, exist_ok=True)
 
 NYT_API_KEY = None
 OPENAI_API_KEY = None
+VA_OPENAI_API_KEY = None
 CHAT_LOG = []
 VA_MESSAGES = []
 VA_CURRENT_REPLY = ""
@@ -80,6 +81,17 @@ def load_openai_api_key():
     except Exception:
         OPENAI_API_KEY = "YOUR_API_KEY_HERE"
 
+def load_va_openai_api_key():
+    """Try to load Vet Adventure OpenAI key from vet_openai_config.py."""
+    global VA_OPENAI_API_KEY
+    try:
+        from vet_openai_config import VA_OPENAI_API_KEY as KEY
+        VA_OPENAI_API_KEY = KEY
+    except Exception:
+        if OPENAI_API_KEY is None:
+            load_openai_api_key()
+        VA_OPENAI_API_KEY = OPENAI_API_KEY or "YOUR_API_KEY_HERE"
+
 def save_nyt_api_key(key: str):
     """Write the NYT API key to nyt_config.py."""
     global NYT_API_KEY
@@ -102,13 +114,24 @@ def save_openai_api_key(key: str):
     except Exception:
         pass
 
+def save_va_openai_api_key(key: str):
+    """Write the Vet Adventure OpenAI key to vet_openai_config.py."""
+    global VA_OPENAI_API_KEY
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vet_openai_config.py")
+    try:
+        with open(config_path, "w") as f:
+            f.write(f'VA_OPENAI_API_KEY = "{key}"\n')
+        VA_OPENAI_API_KEY = key
+    except Exception:
+        pass
+
 
 def va_request_chat(message: str):
     """Send a prompt to OpenAI for Vet Adventure."""
     global VA_MESSAGES, VA_CURRENT_REPLY, VA_CURRENT_OPTIONS
-    if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_API_KEY_HERE":
+    if VA_OPENAI_API_KEY and VA_OPENAI_API_KEY != "YOUR_API_KEY_HERE":
         import openai
-        openai.api_key = OPENAI_API_KEY
+        openai.api_key = VA_OPENAI_API_KEY
         VA_MESSAGES.append({"role": "user", "content": message})
         try:
             resp = openai.ChatCompletion.create(
@@ -135,7 +158,7 @@ def va_request_chat(message: str):
                 return data
         except Exception:
             VA_MESSAGES.pop()
-    VA_CURRENT_REPLY = "OpenAI API key not found. Please create openai_config.py with your key."
+    VA_CURRENT_REPLY = "OpenAI API key not found. Please create vet_openai_config.py with your key."
     VA_CURRENT_OPTIONS = []
     return {"reply": VA_CURRENT_REPLY, "options": VA_CURRENT_OPTIONS}
 
@@ -246,6 +269,7 @@ def api_keys():
     """View and update API keys used by Mini OS."""
     load_nyt_api_key()
     load_openai_api_key()
+    load_va_openai_api_key()
     if request.method == "POST":
         key = request.form.get("nyt_key", "").strip()
         if key:
@@ -253,15 +277,20 @@ def api_keys():
         okey = request.form.get("openai_key", "").strip()
         if okey:
             save_openai_api_key(okey)
+        vakey = request.form.get("va_openai_key", "").strip()
+        if vakey:
+            save_va_openai_api_key(vakey)
         return redirect("/api-keys")
 
     current = NYT_API_KEY or ""
     current_oa = OPENAI_API_KEY or ""
+    current_va = VA_OPENAI_API_KEY or ""
     html = ["<h1>API Keys</h1>"]
     html.append(
         "<form method='post'>"
         f"NYT API Key: <input name='nyt_key' value='{current}'><br>"
         f"OpenAI API Key: <input name='openai_key' value='{current_oa}'><br>"
+        f"Vet Adventure OpenAI Key: <input name='va_openai_key' value='{current_va}'><br>"
         "<button type='submit'>Save</button></form>"
     )
     html.append("<p><a href='/'>Back</a></p>")
@@ -326,7 +355,7 @@ def chat():
 @app.route("/vet-adventure", methods=["GET", "POST"])
 def vet_adventure_page():
     """Simple web interface for the Vet Adventure game."""
-    load_openai_api_key()
+    load_va_openai_api_key()
     if request.method == "POST":
         choice = request.form.get("choice")
         if choice == "restart":

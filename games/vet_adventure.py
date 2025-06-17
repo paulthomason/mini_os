@@ -36,11 +36,15 @@ def log(msg, *, reset=False):
 def load_api_key():
     global OPENAI_API_KEY
     try:
-        from openai_config import OPENAI_API_KEY as KEY
+        from vet_openai_config import VA_OPENAI_API_KEY as KEY
         OPENAI_API_KEY = KEY
-    except Exception as e:
-        OPENAI_API_KEY = None
-        log(f"API key load failed: {e}")
+    except Exception:
+        try:
+            from openai_config import OPENAI_API_KEY as KEY
+            OPENAI_API_KEY = KEY
+        except Exception as e:
+            OPENAI_API_KEY = None
+            log(f"API key load failed: {e}")
 
 def request_chat(message):
     global messages
