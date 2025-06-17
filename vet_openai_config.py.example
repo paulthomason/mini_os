@@ -1,1 +1,8 @@
-VA_OPENAI_API_KEY = "YOUR_API_KEY_HERE"
+import os
+
+# This configuration file is optional.  The Vet Adventure game will also look
+# for the `VA_OPENAI_API_KEY` environment variable.  Copy this file to
+# `vet_openai_config.py` and replace the placeholder below or set the
+# environment variable.
+
+VA_OPENAI_API_KEY = os.environ.get("VA_OPENAI_API_KEY", "YOUR_API_KEY_HERE")

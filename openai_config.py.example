@@ -1,2 +1,9 @@
-OPENAI_API_KEY = "YOUR_API_KEY_HERE"
-VA_OPENAI_API_KEY = "YOUR_API_KEY_HERE"
+import os
+
+# Attempt to read the keys from environment variables so the game can run
+# without editing this file.  If the variables are not set, fall back to the
+# placeholder strings.  Copy this file to `openai_config.py` and replace the
+# placeholders or set the environment variables before launching the program.
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "YOUR_API_KEY_HERE")
+VA_OPENAI_API_KEY = os.environ.get("VA_OPENAI_API_KEY", OPENAI_API_KEY)
