@@ -73,8 +73,14 @@ def load_nyt_api_key():
         NYT_API_KEY = "YOUR_API_KEY_HERE"
 
 def load_openai_api_key():
-    """Try to load OpenAI API key from openai_config.py"""
+    """Try to load OpenAI API key from env var or openai_config.py"""
     global OPENAI_API_KEY
+
+    env_key = os.environ.get("OPENAI_API_KEY")
+    if env_key:
+        OPENAI_API_KEY = env_key
+        return
+
     try:
         from openai_config import OPENAI_API_KEY as KEY
         OPENAI_API_KEY = KEY
@@ -82,8 +88,14 @@ def load_openai_api_key():
         OPENAI_API_KEY = "YOUR_API_KEY_HERE"
 
 def load_va_openai_api_key():
-    """Try to load Vet Adventure OpenAI key from vet_openai_config.py."""
+    """Try to load Vet Adventure OpenAI key from env var or vet_openai_config.py."""
     global VA_OPENAI_API_KEY
+
+    env_key = os.environ.get("VA_OPENAI_API_KEY")
+    if env_key:
+        VA_OPENAI_API_KEY = env_key
+        return
+
     try:
         from vet_openai_config import VA_OPENAI_API_KEY as KEY
         VA_OPENAI_API_KEY = KEY

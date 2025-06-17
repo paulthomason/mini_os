@@ -48,12 +48,20 @@ line_height = 0
 
 
 def load_api_key():
+    """Load the OpenAI API key from env vars or config."""
     global OPENAI_API_KEY
     log("Loading API key", reset=False)
+
+    env_key = os.environ.get("OPENAI_API_KEY")
+    if env_key:
+        OPENAI_API_KEY = env_key
+        log("Loaded API key from environment")
+        return
+
     try:
         from openai_config import OPENAI_API_KEY as KEY
         OPENAI_API_KEY = KEY
-        log("Loaded API key successfully")
+        log("Loaded API key from file")
     except Exception as e:
         OPENAI_API_KEY = None
         log(f"Failed to load API key: {e}")
