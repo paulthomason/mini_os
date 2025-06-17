@@ -20,6 +20,9 @@ os.makedirs(NOTES_DIR, exist_ok=True)
 NYT_API_KEY = None
 OPENAI_API_KEY = None
 CHAT_LOG = []
+VA_MESSAGES = []
+VA_CURRENT_REPLY = ""
+VA_CURRENT_OPTIONS = []
 
 WEB_GAMES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web_games")
 os.makedirs(WEB_GAMES_DIR, exist_ok=True)
@@ -100,6 +103,55 @@ def save_openai_api_key(key: str):
         pass
 
 
+def va_request_chat(message: str):
+    """Send a prompt to OpenAI for Vet Adventure."""
+    global VA_MESSAGES, VA_CURRENT_REPLY, VA_CURRENT_OPTIONS
+    if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_API_KEY_HERE":
+        import openai
+        openai.api_key = OPENAI_API_KEY
+        VA_MESSAGES.append({"role": "user", "content": message})
+        try:
+            resp = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You narrate an amusing text adventure set in a busy veterinary clinic. "
+                            "After each short scene respond ONLY with JSON containing keys 'reply' and 'options'. "
+                            "Provide exactly three numbered choices in 'options'."
+                        ),
+                    }
+                ]
+                + VA_MESSAGES,
+                temperature=0.7,
+                response_format={"type": "json_object"},
+            )
+            data = json.loads(resp.choices[0].message["content"].strip())
+            if isinstance(data, dict) and "reply" in data and isinstance(data.get("options"), list):
+                VA_MESSAGES.append({"role": "assistant", "content": data["reply"]})
+                VA_CURRENT_REPLY = data["reply"]
+                VA_CURRENT_OPTIONS = data["options"]
+                return data
+        except Exception:
+            VA_MESSAGES.pop()
+    VA_CURRENT_REPLY = "OpenAI API key not found. Please create openai_config.py with your key."
+    VA_CURRENT_OPTIONS = []
+    return {"reply": VA_CURRENT_REPLY, "options": VA_CURRENT_OPTIONS}
+
+
+def va_reset():
+    """Start a new Vet Adventure session."""
+    global VA_MESSAGES
+    VA_MESSAGES = []
+    va_request_chat("Start the adventure.")
+
+
+def va_select_option(num: int):
+    """Send the chosen option to the AI."""
+    va_request_chat(str(num))
+
+
 @app.route("/")
 def index():
     return (
@@ -112,6 +164,7 @@ def index():
         "<li><a href='/weather'>Weather</a></li>"
         "<li><a href='/top-stories'>Top Stories</a></li>"
         "<li><a href='/api-keys'>API Keys</a></li>"
+        "<li><a href='/vet-adventure'>Vet Adventure</a></li>"
         "<li><a href='/mini-games'>Mini Games</a></li>"
         "</ul>"
     )
@@ -266,6 +319,40 @@ def chat():
     html.append("<form method='post'><input name='msg'><button type='submit'>Send</button></form>")
     for line in CHAT_LOG[-50:]:
         html.append(f"<div>{line}</div>")
+    html.append("<p><a href='/'>Back</a></p>")
+    return "\n".join(html)
+
+
+@app.route("/vet-adventure", methods=["GET", "POST"])
+def vet_adventure_page():
+    """Simple web interface for the Vet Adventure game."""
+    load_openai_api_key()
+    if request.method == "POST":
+        choice = request.form.get("choice")
+        if choice == "restart":
+            va_reset()
+        else:
+            try:
+                va_select_option(int(choice))
+            except Exception:
+                pass
+        return redirect("/vet-adventure")
+
+    if not VA_CURRENT_OPTIONS and not VA_MESSAGES:
+        va_reset()
+
+    html = ["<h1>Vet Adventure</h1>"]
+    if VA_CURRENT_REPLY:
+        html.append(f"<p>{VA_CURRENT_REPLY}</p>")
+    html.append("<form method='post'>")
+    for i, opt in enumerate(VA_CURRENT_OPTIONS, 1):
+        html.append(
+            f"<button type='submit' name='choice' value='{i}'>{i}) {opt}</button><br>"
+        )
+    html.append("</form>")
+    html.append(
+        "<form method='post'><button type='submit' name='choice' value='restart'>Restart</button></form>"
+    )
     html.append("<p><a href='/'>Back</a></p>")
     return "\n".join(html)
 
