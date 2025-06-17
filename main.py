@@ -280,6 +280,15 @@ def is_wifi_connected():
     return wifi_connected
 
 
+def draw_status_icons(draw):
+    """Draw small status icons (letters) at the top left of the screen."""
+    x = 2
+    if is_wifi_connected():
+        draw.text((x, 2), "W", font=font_large, fill=(0, 255, 0))
+        x += draw.textbbox((x, 2), "W", font=font_large)[2] + 4
+    return x
+
+
 
 # --- Backlight Control ---
 brightness_level = 100  # Percentage 0-100
@@ -516,11 +525,15 @@ class Menu:
         img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=current_color_scheme["background"])
         draw = ImageDraw.Draw(img)
 
-        # Draw header
-        header_text = "Mini-OS Menu"
+        # Draw status icons and optional header text
+        header_x = draw_status_icons(draw)
+        header_text = ""
         if self.current_screen in ("nyt_list", "nyt_headline"):
             header_text = "NYT Top Stories"
-        draw.text((5, 2), header_text, font=font_large, fill=current_color_scheme["header"])
+        elif self.current_screen != "main_menu":
+            header_text = "Mini-OS Menu"
+        if header_text:
+            draw.text((header_x, 2), header_text, font=font_large, fill=current_color_scheme["header"])
         # Draw a separator line under the header
         draw.line([(0, 18), (DISPLAY_WIDTH, 18)], fill=current_color_scheme["text"])  # Separator line
 
