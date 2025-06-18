@@ -15,8 +15,8 @@ Example JSON:
 {
   "reply": "CBC: mild anemia, neutrophilia. UA: sg 1.014, proteinuria.",
   "options": [
-    "1. Run abd US",
-    "2. Start ACEi",
-    "3. Refer for bx"
+    "Run abd US",
+    "Start ACEi",
+    "Refer for bx"
   ]
 }
