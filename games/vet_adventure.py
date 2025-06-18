@@ -73,6 +73,7 @@ current_options = []
 reveal_thread = None
 reveal_stop = threading.Event()
 ai_display_len = 0
+reveal_full_text = ""
 
 text_offset = 0
 text_max_offset = 0
@@ -154,29 +155,32 @@ def stop_reveal():
         reveal_thread.join()
         reveal_thread = None
     if conversation:
-        ai_display_len = len(conversation[-1])
+        ai_display_len = len(reveal_full_text)
 
 
 def start_reveal():
     """Animate AI text appearing one character at a time."""
-    global reveal_thread, ai_display_len
+    global reveal_thread, ai_display_len, reveal_full_text
 
     stop_reveal()
 
     if not conversation:
         return
 
-    full_text = conversation[-1]
+    opts_text = "\n".join(f"{i}) {o}" for i, o in enumerate(current_options, 1))
+    reveal_full_text = conversation[-1]
+    if opts_text:
+        reveal_full_text += "\n" + opts_text
 
     def task():
         global ai_display_len, reveal_thread
-        for i in range(len(full_text)):
+        for i in range(len(reveal_full_text)):
             if reveal_stop.is_set():
                 break
             ai_display_len = i + 1
             draw(partial=True)
             time.sleep(0.05)
-        ai_display_len = len(full_text)
+        ai_display_len = len(reveal_full_text)
         draw()
         reveal_thread = None
 
@@ -255,8 +259,10 @@ def draw(partial=False):
     lines = []
     for idx, line in enumerate(conversation):
         if partial and idx == len(conversation) - 1:
-            line = line[:ai_display_len]
-        lines.extend(wrap_text(line, fonts[1], 118, d))
+            snippet = reveal_full_text[:ai_display_len]
+            lines.extend(wrap_text(snippet, fonts[1], 118, d))
+        else:
+            lines.extend(wrap_text(line, fonts[1], 118, d))
     if not partial:
         for i, opt in enumerate(current_options, 1):
             lines.extend(wrap_text(f"{i}) {opt}", fonts[1], 118, d))
@@ -264,7 +270,10 @@ def draw(partial=False):
     line_height = fonts[1].getbbox("A")[3] + 2
     total_height = len(lines) * line_height
     text_max_offset = max(0, total_height - (kb_y - 5))
-    text_offset = min(text_offset, text_max_offset)
+    if partial:
+        text_offset = text_max_offset
+    else:
+        text_offset = min(text_offset, text_max_offset)
     for line in lines:
         if 5 <= y < kb_y:
             d.text((5, y), line, font=fonts[1], fill=(255, 255, 255))
