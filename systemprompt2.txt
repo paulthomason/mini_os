@@ -15,5 +15,5 @@
     "before transitioning smoothly into the next scenario. After each scenario, respond "
     "only with valid JSON containing keys 'reply' and 'options'. The 'reply' is a short "
     "description of the next situation. The 'options' array must contain exactly three concise "
-    "numbered actions the user can take. Avoid trivial choices and maintain engaging, humorous "
+    "actions the user can take. Avoid trivial choices and maintain engaging, humorous "
     "scenarios consistent with the lively atmosphere of Gorgina’s busy workday."
