@@ -69,7 +69,7 @@ An additional `openai_config.py.example` provides a placeholder for your OpenAI 
 
 The system prompt used for **AI Cases** is stored in `systemprompt.txt` at the repository root. Edit that file to change the instructions without modifying the code.
 
-To leave the game at any time, hold the joystick to the left for about a second and you'll return to the main menu.
+To leave the AI Cases or Vet Adventure game at any time, hold the joystick to the left for about a second and you'll return to the main menu.
 
 ## Web Interface
 

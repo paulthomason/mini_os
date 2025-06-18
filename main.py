@@ -994,6 +994,9 @@ def button_event_handler(channel):
         elif menu_instance.current_screen == "ai_cases" and pin_name == "JOY_LEFT":
             if hold_time >= 1:
                 show_main_menu()
+        elif menu_instance.current_screen == "vet_adventure" and pin_name == "JOY_LEFT":
+            if hold_time >= 1:
+                show_main_menu()
         # print(f"[{datetime.now().strftime('%H:%M:%S')}] {pin_name} RELEASED.") # For debugging
     
     last_event_time[pin_name] = current_time
