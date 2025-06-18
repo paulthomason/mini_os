@@ -34,55 +34,69 @@ def log(msg, *, reset=False):
         pass
 
 def load_api_key():
-    """Populate OPENAI_API_KEY from env vars or config files."""
+    """Populate OPENAI_API_KEY from env vars or openai_config.py."""
     global OPENAI_API_KEY
 
-    # Environment variable takes precedence so deployments can avoid
-    # storing secrets in source control.
     env_key = os.environ.get("VA_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
     if env_key:
         OPENAI_API_KEY = env_key
         return
 
-    try:
-        from vet_openai_config import VA_OPENAI_API_KEY as KEY
-        OPENAI_API_KEY = KEY
-    except Exception:
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "openai_config.py")
+
+    if os.path.exists(config_path):
         try:
-            from openai_config import OPENAI_API_KEY as KEY
-            OPENAI_API_KEY = KEY
+            import importlib.util
+
+            spec = importlib.util.spec_from_file_location("openai_config", config_path)
+            if spec and spec.loader:
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                OPENAI_API_KEY = getattr(module, "OPENAI_API_KEY", None)
+                return
         except Exception as e:
-            OPENAI_API_KEY = None
             log(f"API key load failed: {e}")
+
+    try:
+        from openai_config import OPENAI_API_KEY as KEY
+        OPENAI_API_KEY = KEY
+    except Exception as e:
+        OPENAI_API_KEY = None
+        log(f"API key load failed: {e}")
 
 def request_chat(message):
     global messages
-    if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_API_KEY_HERE":
-        openai.api_key = OPENAI_API_KEY
-        messages.append({"role": "user", "content": message})
-        try:
-            resp = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You narrate an amusing text adventure set in a busy veterinary clinic. "
-                            "After each short scene respond ONLY with JSON containing keys 'reply' and 'options'. "
-                            "Provide exactly three numbered choices in 'options'."
-                        ),
-                    }
-                ] + messages,
-                temperature=0.7,
-                response_format={"type": "json_object"},
-            )
-            data = json.loads(resp.choices[0].message["content"].strip())
-            if isinstance(data, dict) and "reply" in data and isinstance(data.get("options"), list):
-                messages.append({"role": "assistant", "content": data["reply"]})
-                return data
-        except Exception as e:
-            messages.pop()
-            log(f"OpenAI request failed: {e}")
+    if not OPENAI_API_KEY or OPENAI_API_KEY == "YOUR_API_KEY_HERE":
+        return {"reply": MISSING_KEY_MSG, "options": []}
+
+    openai.api_key = OPENAI_API_KEY
+    messages.append({"role": "user", "content": message})
+    try:
+        resp = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You narrate an amusing text adventure set in a busy veterinary clinic. "
+                        "After each short scene respond ONLY with JSON containing keys 'reply' and 'options'. "
+                        "Provide exactly three numbered choices in 'options'."
+                    ),
+                }
+            ]
+            + messages,
+            temperature=0.7,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message["content"].strip())
+        if isinstance(data, dict) and "reply" in data and isinstance(data.get("options"), list):
+            messages.append({"role": "assistant", "content": data["reply"]})
+            return data
+    except Exception as e:
+        messages.pop()
+        log(f"OpenAI request failed: {e}")
+        return {"reply": "OpenAI request failed. Check logs.", "options": []}
+
     return {"reply": MISSING_KEY_MSG, "options": []}
 
 def init(display_func, fonts_tuple, quit_callback):
