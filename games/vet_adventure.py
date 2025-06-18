@@ -218,7 +218,7 @@ def _select_option(num: int):
     # Replace conversation with the latest choice and response
     conversation = [f"You: {num}"]
     data = request_chat(str(num))
-    conversation.append("AI: " + data.get("reply", ""))
+    conversation.append(data.get("reply", ""))
     current_options = data.get("options", [])
     text_offset = 0
     ai_display_len = 0
