@@ -107,7 +107,7 @@ def request_chat(message):
         log("Sending message to OpenAI")
         try:
             resp = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4.1",
                 messages=[
                     {
                         "role": "system",
