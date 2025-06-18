@@ -110,7 +110,7 @@ def request_chat(message):
         log("Sending message to OpenAI")
         try:
             resp = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4.1",
                 messages=[
                     {
                         "role": "system",
@@ -200,7 +200,7 @@ def start():
     messages = []
     data = request_chat("Start the conversation.")
     # Reset conversation so each scenario appears on a fresh screen
-    conversation = ["AI: " + data.get("reply", "")]
+    conversation = [data.get("reply", "")]
     current_options = data.get("options", [])
     text_offset = 0
     ai_display_len = 0
