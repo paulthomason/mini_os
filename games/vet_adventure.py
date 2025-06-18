@@ -5,6 +5,7 @@ import openai
 from datetime import datetime
 from PIL import Image, ImageDraw
 from .trivia import wrap_text
+import importlib.util
 
 thread_safe_display = None
 fonts = None
@@ -34,12 +35,15 @@ def log(msg, *, reset=False):
         pass
 
 def load_api_key():
-    """Load the API key from openai_config.py."""
+    """Load the API key from openai_config.py in the mini_os directory."""
     global OPENAI_API_KEY
 
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "openai_config.py")
     try:
-        from openai_config import OPENAI_API_KEY as KEY
-        OPENAI_API_KEY = KEY
+        spec = importlib.util.spec_from_file_location("openai_config", config_path)
+        cfg = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cfg)
+        OPENAI_API_KEY = getattr(cfg, "OPENAI_API_KEY", None)
     except Exception as e:
         OPENAI_API_KEY = None
         log(f"API key load failed: {e}")
