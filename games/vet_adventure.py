@@ -34,26 +34,15 @@ def log(msg, *, reset=False):
         pass
 
 def load_api_key():
-    """Populate OPENAI_API_KEY from env vars or config files."""
+    """Load the API key from openai_config.py."""
     global OPENAI_API_KEY
 
-    # Environment variable takes precedence so deployments can avoid
-    # storing secrets in source control.
-    env_key = os.environ.get("VA_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
-    if env_key:
-        OPENAI_API_KEY = env_key
-        return
-
     try:
-        from vet_openai_config import VA_OPENAI_API_KEY as KEY
+        from openai_config import OPENAI_API_KEY as KEY
         OPENAI_API_KEY = KEY
-    except Exception:
-        try:
-            from openai_config import OPENAI_API_KEY as KEY
-            OPENAI_API_KEY = KEY
-        except Exception as e:
-            OPENAI_API_KEY = None
-            log(f"API key load failed: {e}")
+    except Exception as e:
+        OPENAI_API_KEY = None
+        log(f"API key load failed: {e}")
 
 def request_chat(message):
     global messages
